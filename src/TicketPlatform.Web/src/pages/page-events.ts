@@ -90,7 +90,12 @@ export class PageEvents extends LitElement {
     super.connectedCallback();
     try {
       const result = await api.getEvents();
-      this.events = result;
+      if (result.length > 0) {
+        this.events = result;
+      } else {
+        this.events = DEMO_EVENTS;
+        this.isDemo = true;
+      }
     } catch {
       // API unavailable — show demo events so the page isn't empty
       this.events = DEMO_EVENTS;

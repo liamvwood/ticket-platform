@@ -9,14 +9,38 @@ using TicketPlatform.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        o.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 builder.Services.AddOpenApi();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("frontend", policy =>
+        policy.WithOrigins(
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:4173")
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<QrTokenService>();
+
+var paymentProvider = builder.Configuration["Payment:Provider"];
+if (string.Equals(paymentProvider, "Mock", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddSingleton<IPaymentProvider, MockPaymentProvider>();
+else
+    builder.Services.AddScoped<IPaymentProvider, StripePaymentProvider>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -52,6 +76,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseCors("frontend");
 app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseAuthentication();

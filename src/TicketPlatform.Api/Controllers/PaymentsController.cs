@@ -10,9 +10,9 @@ namespace TicketPlatform.Api.Controllers;
 
 [ApiController]
 [Route("payments")]
-public class PaymentsController(AppDbContext db, IConfiguration config, QrTokenService qrTokenService) : ControllerBase
+public class PaymentsController(AppDbContext db, IConfiguration config, QrTokenService qrTokenService, IPaymentProvider paymentProvider) : ControllerBase
 {
-    // POST /payments/orders/{orderId}/checkout — create Stripe PaymentIntent
+    // POST /payments/orders/{orderId}/checkout — create PaymentIntent via configured provider
     [HttpPost("orders/{orderId:guid}/checkout")]
     [Authorize]
     public async Task<ActionResult<object>> CreateCheckout(Guid orderId)
@@ -25,21 +25,27 @@ public class PaymentsController(AppDbContext db, IConfiguration config, QrTokenS
         if (order.Status != OrderStatus.AwaitingPayment) return BadRequest("Order is not awaiting payment.");
         if (order.ExpiresAt < DateTimeOffset.UtcNow) return BadRequest("Order has expired.");
 
-        StripeConfiguration.ApiKey = config["Stripe:SecretKey"];
-
-        var service = new PaymentIntentService();
-        var intent = await service.CreateAsync(new PaymentIntentCreateOptions
-        {
-            Amount = (long)(order.TotalAmount * 100),
-            Currency = "usd",
-            Metadata = new Dictionary<string, string> { ["orderId"] = order.Id.ToString() },
-            AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true }
-        });
-
-        order.StripePaymentIntentId = intent.Id;
+        var result = await paymentProvider.CreatePaymentIntentAsync(order.Id, order.TotalAmount);
+        order.StripePaymentIntentId = result.PaymentIntentId;
         await db.SaveChangesAsync();
 
-        return Ok(new { clientSecret = intent.ClientSecret, paymentIntentId = intent.Id });
+        return Ok(new { clientSecret = result.ClientSecret, paymentIntentId = result.PaymentIntentId });
+    }
+
+    // POST /payments/orders/{orderId}/mock-confirm — simulate payment success (mock provider only)
+    [HttpPost("orders/{orderId:guid}/mock-confirm")]
+    [Authorize]
+    public async Task<IActionResult> MockConfirm(Guid orderId)
+    {
+        if (paymentProvider is not MockPaymentProvider)
+            return NotFound();
+
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
+        if (order is null) return NotFound();
+        if (order.StripePaymentIntentId is null) return BadRequest("No payment intent on this order.");
+
+        await FinalizeOrder(order.StripePaymentIntentId, (long)(order.TotalAmount * 100));
+        return Ok(new { status = "confirmed" });
     }
 
     // POST /webhooks/stripe — handle Stripe events

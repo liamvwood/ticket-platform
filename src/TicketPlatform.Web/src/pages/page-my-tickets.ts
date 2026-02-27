@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { api } from '../services/api.js';
-import { navigate } from '../services/auth.js';
+import { auth, navigate } from '../services/auth.js';
 
 @customElement('page-my-tickets')
 export class PageMyTickets extends LitElement {
@@ -81,6 +81,10 @@ export class PageMyTickets extends LitElement {
 
   async connectedCallback() {
     super.connectedCallback();
+    if (!auth.isLoggedIn) {
+      navigate('/login');
+      return;
+    }
     try {
       this.orders = await api.getOrders();
     } finally {
