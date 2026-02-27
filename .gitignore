@@ -426,3 +426,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Explicitly ignore build output
+bin/
+obj/
