@@ -1,0 +1,41 @@
+replicaCount: 2
+
+image:
+  repository: ticket-platform-api
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  host: tickets.austin.local
+  tls: []
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+
+env:
+  ASPNETCORE_ENVIRONMENT: Production
+
+secrets:
+  # These must be provided via --set or a sealed-secrets manifest
+  connectionString: ""
+  jwtSecret: ""
+  stripeSecretKey: ""
+  stripeWebhookSecret: ""
