@@ -25,11 +25,21 @@ public class AuthController(
         if (await db.Users.AnyAsync(u => u.Email == req.Email))
             return Conflict("Email already registered.");
 
+        // Block registration if a VenueAdmin invite is pending for this email.
+        // The recipient must accept the invite to get their account and VenueAdmin role.
+        var normalizedEmail = req.Email.ToLowerInvariant();
+        var pendingInvite = await db.VenueInvites.AnyAsync(i =>
+            i.Email == normalizedEmail &&
+            i.UsedAt == null &&
+            i.ExpiresAt > DateTimeOffset.UtcNow);
+        if (pendingInvite)
+            return Conflict(new { error = "This email has a pending venue invite. Please use your invite link to create your account.", invitePending = true });
+
         var userId = Guid.NewGuid();
         var user = new User
         {
             Id = userId,
-            Email = req.Email.ToLowerInvariant(),
+            Email = normalizedEmail,
             PhoneNumber = req.PhoneNumber,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
             ReferralCode = SlugHelper.GenerateReferralCode(userId)
@@ -203,7 +213,15 @@ public class AuthController(
             return StatusCode(502, new { error = "OAuth exchange failed.", detail = ex.Message });
         }
 
-        var user = await UpsertOAuthUserAsync(info);
+        User user;
+        try
+        {
+            user = await UpsertOAuthUserAsync(info);
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "INVITE_PENDING")
+        {
+            return Conflict(new { error = "This email has a pending venue invite. Please use your invite link to create your account.", invitePending = true });
+        }
         return Ok(new AuthResponse(tokenService.GenerateToken(user), user.Email, user.Role));
     }
 
@@ -220,7 +238,15 @@ public class AuthController(
         if (mock is null) return NotFound();
 
         var info = await mock.GetUserInfoAsync($"{provider}:{email}", string.Empty, string.Empty);
-        var user = await UpsertOAuthUserAsync(info);
+        User user;
+        try
+        {
+            user = await UpsertOAuthUserAsync(info);
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "INVITE_PENDING")
+        {
+            return Conflict(new { error = "This email has a pending venue invite. Please use your invite link to create your account.", invitePending = true });
+        }
         return Ok(new AuthResponse(tokenService.GenerateToken(user), user.Email, user.Role));
     }
 
@@ -234,8 +260,9 @@ public class AuthController(
             return user;
 
         // 2. Link to existing account by email
-        if (!string.IsNullOrEmpty(info.Email) && !info.Email.Contains("@noemail.local"))
-            user = await db.Users.FirstOrDefaultAsync(u => u.Email == info.Email.ToLowerInvariant());
+        var normalizedEmail = info.Email?.ToLowerInvariant() ?? string.Empty;
+        if (!string.IsNullOrEmpty(normalizedEmail) && !normalizedEmail.Contains("@noemail.local"))
+            user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
 
         if (user is not null)
         {
@@ -246,12 +273,24 @@ public class AuthController(
             return user;
         }
 
-        // 3. Create new user
+        // 3. If a pending VenueAdmin invite exists for this email, do NOT create a plain User account.
+        //    Throw so the caller returns a 409 directing the invitee to use their invite link.
+        if (!string.IsNullOrEmpty(normalizedEmail) && !normalizedEmail.Contains("@noemail.local"))
+        {
+            var hasPendingInvite = await db.VenueInvites.AnyAsync(i =>
+                i.Email == normalizedEmail &&
+                i.UsedAt == null &&
+                i.ExpiresAt > DateTimeOffset.UtcNow);
+            if (hasPendingInvite)
+                throw new InvalidOperationException("INVITE_PENDING");
+        }
+
+        // 4. Create new user
         var userId = Guid.NewGuid();
         user = new User
         {
             Id = userId,
-            Email = info.Email?.ToLowerInvariant() ?? string.Empty,
+            Email = normalizedEmail,
             PhoneNumber = string.Empty,
             PasswordHash = string.Empty,
             Role = "User",

@@ -108,7 +108,7 @@ public class InvitesController(AppDbContext db, TokenService tokenService, IConf
         });
     }
 
-    // POST /invites/{token}/accept — create VenueAdmin account + Venue
+    // POST /invites/{token}/accept — create or upgrade to VenueAdmin + Venue
     [HttpPost("invites/{token}/accept")]
     public async Task<ActionResult<AuthResponse>> AcceptInvite(string token, [FromBody] AcceptInviteRequest req)
     {
@@ -120,34 +120,49 @@ public class InvitesController(AppDbContext db, TokenService tokenService, IConf
         if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 8)
             return BadRequest(new { error = "Password must be at least 8 characters." });
 
-        if (await db.Users.AnyAsync(u => u.Email == invite.Email))
-            return Conflict(new { error = "An account with this email already exists." });
+        User user;
+        var existing = await db.Users.FirstOrDefaultAsync(u => u.Email == invite.Email);
 
-        // Create user
-        var userId = Guid.NewGuid();
-        var user = new User
+        if (existing is not null)
         {
-            Id = userId,
-            Email = invite.Email,
-            PhoneNumber = req.PhoneNumber?.Trim() ?? string.Empty,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
-            Role = "VenueAdmin",
-            ReferralCode = SlugHelper.GenerateReferralCode(userId),
-        };
-        db.Users.Add(user);
+            // An account with this email already exists (e.g. created via OAuth or normal register
+            // before the invite was accepted). Upgrade it to VenueAdmin and set the password.
+            existing.Role = "VenueAdmin";
+            existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
+            if (!string.IsNullOrWhiteSpace(req.PhoneNumber))
+                existing.PhoneNumber = req.PhoneNumber.Trim();
+            user = existing;
+        }
+        else
+        {
+            var userId = Guid.NewGuid();
+            user = new User
+            {
+                Id = userId,
+                Email = invite.Email,
+                PhoneNumber = req.PhoneNumber?.Trim() ?? string.Empty,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
+                Role = "VenueAdmin",
+                ReferralCode = SlugHelper.GenerateReferralCode(userId),
+            };
+            db.Users.Add(user);
+        }
 
-        // Create the venue
-        var venue = new Venue
+        // Create the venue (only if one doesn't already exist for this owner)
+        var venueExists = await db.Venues.AnyAsync(v => v.OwnerId == user.Id);
+        if (!venueExists)
         {
-            Id = Guid.NewGuid(),
-            Name = invite.VenueName,
-            OwnerId = userId,
-        };
-        db.Venues.Add(venue);
+            db.Venues.Add(new Venue
+            {
+                Id = Guid.NewGuid(),
+                Name = invite.VenueName,
+                OwnerId = user.Id,
+            });
+        }
 
         // Mark invite used
         invite.UsedAt = DateTimeOffset.UtcNow;
-        invite.CreatedUserId = userId;
+        invite.CreatedUserId = user.Id;
 
         await db.SaveChangesAsync();
 

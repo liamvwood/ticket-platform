@@ -71,6 +71,8 @@ export class PageAuth extends LitElement {
     .btn:hover:not(:disabled) { background: #5a52e0; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .error { background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 0.75rem 1rem; color: #fca5a5; font-size: 0.9rem; margin-bottom: 1rem; }
+    .invite-notice { background: #0c1f3d; border: 1px solid #1e3a5f; border-radius: 8px; padding: 1rem; color: #93c5fd; font-size: 0.9rem; margin-bottom: 1rem; }
+    .invite-notice strong { display: block; margin-bottom: 0.35rem; }
     .switch { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #8888a8; }
     .switch a { color: #818cf8; cursor: pointer; }
     .switch a:hover { color: #a5b4fc; }
@@ -104,10 +106,13 @@ export class PageAuth extends LitElement {
   @state() loading = false;
   @state() error = '';
 
+  @state() invitePending = false;
+
   private async _submit(e: Event) {
     e.preventDefault();
     this.loading = true;
     this.error = '';
+    this.invitePending = false;
     try {
       const res = this.mode === 'login'
         ? await api.login(this.email, this.password)
@@ -115,7 +120,14 @@ export class PageAuth extends LitElement {
       auth.save(res.token, res.email, res.role);
       navigate('/events');
     } catch (err: any) {
-      this.error = err.message;
+      // Parse the error body for invitePending flag
+      try {
+        const body = JSON.parse(err.message);
+        if (body.invitePending) { this.invitePending = true; return; }
+        this.error = body.error ?? err.message;
+      } catch {
+        this.error = err.message;
+      }
     } finally {
       this.loading = false;
     }
@@ -161,6 +173,13 @@ export class PageAuth extends LitElement {
         <h1>${isLogin ? 'Welcome back' : 'Create account'}</h1>
         <p class="sub">${isLogin ? 'Log in to access your tickets.' : 'Join Austin Tickets — no bots allowed.'}</p>
         ${this.error ? html`<div class="error">${this.error}</div>` : ''}
+        ${this.invitePending ? html`
+          <div class="invite-notice">
+            <strong>You have a pending venue invite!</strong>
+            This email address was invited to create a venue admin account.
+            Check your email for an invite link, or ask the platform owner to resend it.
+          </div>
+        ` : ''}
 
         ${Object.entries(PROVIDER_CONFIG).map(([provider, cfg]) => html`
           <button

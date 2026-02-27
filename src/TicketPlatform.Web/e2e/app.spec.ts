@@ -708,3 +708,43 @@ test.describe('Venue invite flow', () => {
     expect(Array.isArray(res.json())).toBe(true);
   });
 });
+
+test.describe('VenueAdmin invite-only lockdown', () => {
+  const OWNER_EMAIL = 'owner@austintickets.dev';
+  const OWNER_PASS = 'ChangeMe123!';
+
+  let ownerToken = '';
+  let lockdownInviteToken = '';
+  const invitedEmail = `lockdown_${RUN}@test.dev`;
+
+  test('setup: AppOwner creates an invite for lockdown test', async () => {
+    const loginRes = await apiPost('/auth/login', { email: OWNER_EMAIL, password: OWNER_PASS });
+    ownerToken = loginRes.json().token ?? '';
+    if (!ownerToken) return;
+    const res = await apiPost('/admin/invites', { email: invitedEmail, venueName: `Lockdown Venue ${RUN}` }, ownerToken);
+    expect(res.status()).toBe(200);
+    lockdownInviteToken = res.json().token;
+  });
+
+  test('registering with a pending-invite email returns 409 with invitePending flag', async () => {
+    if (!lockdownInviteToken) return;
+    const res = await apiPost('/auth/register', { email: invitedEmail, password: 'TrySquat123!', phoneNumber: '' });
+    expect(res.status()).toBe(409);
+    expect(res.json().invitePending).toBe(true);
+  });
+
+  test('OAuth mock-login with a pending-invite email returns 409 with invitePending flag', async () => {
+    if (!lockdownInviteToken) return;
+    const res = await apiGet(`/auth/oauth/mock-login?provider=Google&email=${encodeURIComponent(invitedEmail)}`);
+    expect(res.status()).toBe(409);
+    expect(res.json().invitePending).toBe(true);
+  });
+
+  test('accepting the invite upgrades to VenueAdmin (or creates if not exists)', async () => {
+    if (!lockdownInviteToken) return;
+    const res = await apiPost(`/invites/${lockdownInviteToken}/accept`, { password: 'InviteOnly123!' });
+    expect(res.status()).toBe(201);
+    expect(res.json().role).toBe('VenueAdmin');
+    expect(res.json().email).toBe(invitedEmail);
+  });
+});
