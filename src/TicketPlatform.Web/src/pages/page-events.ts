@@ -136,7 +136,7 @@ export class PageEvents extends LitElement {
       ` : ''}
       <div class="grid">
         ${this.events.map(ev => html`
-          <div class="event-card" @click=${() => navigate(`/events/${ev.id}`)}>
+          <div class="event-card" @click=${() => navigate(`/events/${ev.slug || ev.id}`)}>
             <div class="event-thumb ${this._thumbClass(ev)}" .innerHTML=${this._thumbIcon(ev)}></div>
             <div class="event-body">
               <div class="event-name">${ev.name}</div>

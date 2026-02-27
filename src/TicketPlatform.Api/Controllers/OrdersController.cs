@@ -17,9 +17,12 @@ public class OrdersController(AppDbContext db) : ControllerBase
 {
     // POST /orders — create pending order and lock tickets
     [HttpPost]
-    public async Task<ActionResult<Order>> Create(CreateOrderRequest req)
+    public async Task<ActionResult<Order>> Create(CreateOrderRequest req, [FromQuery(Name = "ref")] string? referralCode)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        // Clamp platform fee to reasonable range (0–20)
+        var platformFee = Math.Clamp(req.PlatformFee, 0m, 20m);
 
         var ticketType = await db.TicketTypes
             .Include(tt => tt.Event)
@@ -50,6 +53,8 @@ public class OrdersController(AppDbContext db) : ControllerBase
                 UserId = userId,
                 Status = OrderStatus.AwaitingPayment,
                 TotalAmount = ticketType.Price * req.Quantity,
+                PlatformFee = platformFee,
+                ReferredBy = referralCode,
                 ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(15)
             };
             db.Orders.Add(order);

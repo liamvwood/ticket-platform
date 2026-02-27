@@ -25,7 +25,7 @@ public class PaymentsController(AppDbContext db, IConfiguration config, QrTokenS
         if (order.Status != OrderStatus.AwaitingPayment) return BadRequest("Order is not awaiting payment.");
         if (order.ExpiresAt < DateTimeOffset.UtcNow) return BadRequest("Order has expired.");
 
-        var result = await paymentProvider.CreatePaymentIntentAsync(order.Id, order.TotalAmount);
+        var result = await paymentProvider.CreatePaymentIntentAsync(order.Id, order.TotalAmount + order.PlatformFee);
         order.StripePaymentIntentId = result.PaymentIntentId;
         await db.SaveChangesAsync();
 

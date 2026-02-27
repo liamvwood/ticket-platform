@@ -13,18 +13,27 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
+    public DbSet<PhoneVerification> PhoneVerifications => Set<PhoneVerification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<User>(e => e.HasIndex(u => u.Email).IsUnique());
+        modelBuilder.Entity<User>(e => {
+            e.HasIndex(u => u.Email).IsUnique();
+            e.HasIndex(u => u.ReferralCode).IsUnique();
+        });
+
+        modelBuilder.Entity<Event>(e =>
+            e.HasIndex(ev => ev.Slug).IsUnique());
 
         modelBuilder.Entity<TicketType>(e =>
             e.Property(t => t.Price).HasColumnType("numeric(10,2)"));
 
-        modelBuilder.Entity<Order>(e =>
-            e.Property(o => o.TotalAmount).HasColumnType("numeric(10,2)"));
+        modelBuilder.Entity<Order>(e => {
+            e.Property(o => o.TotalAmount).HasColumnType("numeric(10,2)");
+            e.Property(o => o.PlatformFee).HasColumnType("numeric(10,2)");
+        });
 
         modelBuilder.Entity<Payment>(e =>
             e.Property(p => p.Amount).HasColumnType("numeric(10,2)"));

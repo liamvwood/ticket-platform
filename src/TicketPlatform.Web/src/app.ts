@@ -40,7 +40,7 @@ export class TpApp extends LitElement {
   private _routes: Route[] = [
     { pattern: /^\/$/, render: () => html`<page-home></page-home>` },
     { pattern: /^\/events$/, render: () => html`<page-events></page-events>` },
-    { pattern: /^\/events\/([0-9a-f-]+)$/, render: m => html`<page-event-detail .eventId=${m[1]}></page-event-detail>` },
+    { pattern: /^\/events\/([^/]+)$/, render: m => html`<page-event-detail .eventId=${m[1]}></page-event-detail>` },
     { pattern: /^\/checkout\/([0-9a-f-]+)$/, render: m => html`<page-checkout .orderId=${m[1]}></page-checkout>` },
     { pattern: /^\/my-tickets$/, render: () => html`<page-my-tickets></page-my-tickets>` },
     { pattern: /^\/login$/, render: () => html`<page-auth mode="login"></page-auth>` },

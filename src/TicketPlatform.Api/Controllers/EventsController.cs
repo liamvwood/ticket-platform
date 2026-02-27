@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TicketPlatform.Api.Models;
+using TicketPlatform.Api.Services;
 using TicketPlatform.Core.Entities;
 using TicketPlatform.Infrastructure.Data;
 
@@ -33,6 +34,17 @@ public class EventsController(AppDbContext db) : ControllerBase
         return ev is null ? NotFound() : Ok(ev);
     }
 
+    [HttpGet("{slug}")]
+    public async Task<ActionResult<Event>> GetBySlug(string slug)
+    {
+        var ev = await db.Events
+            .Include(e => e.Venue)
+            .Include(e => e.TicketTypes)
+            .FirstOrDefaultAsync(e => e.Slug == slug);
+
+        return ev is null ? NotFound() : Ok(ev);
+    }
+
     [HttpPost]
     [Authorize(Roles = "VenueAdmin")]
     public async Task<ActionResult<Event>> Create(CreateEventRequest req)
@@ -51,6 +63,7 @@ public class EventsController(AppDbContext db) : ControllerBase
             SaleStartsAt = req.SaleStartsAt,
             IsPublished = false
         };
+        ev.Slug = SlugHelper.Generate(ev.Name, ev.Id);
 
         db.Events.Add(ev);
         await db.SaveChangesAsync();

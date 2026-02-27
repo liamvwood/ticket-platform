@@ -40,14 +40,31 @@ export const api = {
     request<any>(`/events/${eventId}/ticket-types`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Orders
-  createOrder: (ticketTypeId: string, quantity: number) =>
-    request<any>('/orders', { method: 'POST', body: JSON.stringify({ ticketTypeId, quantity }) }),
+  createOrder: (ticketTypeId: string, quantity: number, platformFee = 0, referralCode?: string) => {
+    const qs = referralCode ? `?ref=${encodeURIComponent(referralCode)}` : '';
+    return request<any>(`/orders${qs}`, { method: 'POST', body: JSON.stringify({ ticketTypeId, quantity, platformFee }) });
+  },
   getOrders: () => request<any[]>('/orders'),
   getOrder: (id: string) => request<any>(`/orders/${id}`),
 
   // Checkout
   createCheckout: (orderId: string) =>
     request<{ clientSecret: string; paymentIntentId: string }>(`/payments/orders/${orderId}/checkout`, { method: 'POST' }),
+  mockConfirm: (orderId: string) =>
+    request<{ status: string }>(`/payments/orders/${orderId}/mock-confirm`, { method: 'POST' }),
+
+  // Phone OTP (guest checkout)
+  requestOtp: (phoneNumber: string) =>
+    request<{ message: string; devCode?: string }>('/auth/phone/request-otp', {
+      method: 'POST', body: JSON.stringify({ phoneNumber }),
+    }),
+  verifyOtp: (phoneNumber: string, code: string) =>
+    request<{ token: string; email: string; role: string }>('/auth/phone/verify-otp', {
+      method: 'POST', body: JSON.stringify({ phoneNumber, code }),
+    }),
+
+  // Referrals
+  getReferrals: () => request<{ referralCode: string; referralCount: number }>('/users/me/referrals'),
 
   // Check-in
   validateQr: (token: string) =>

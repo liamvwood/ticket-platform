@@ -411,6 +411,154 @@ test.describe('Navigation', () => {
   });
 });
 
+// ─── Event slugs ───────────────────────────────────────────────────────────
+
+test.describe('Event slugs', () => {
+  test('events returned by API include a slug', async () => {
+    const res = await apiGet('/events');
+    expect(res.status()).toBe(200);
+    const events = res.json() as any[];
+    for (const ev of events) {
+      expect(typeof ev.slug).toBe('string');
+      expect(ev.slug.length).toBeGreaterThan(0);
+    }
+  });
+
+  test('event is reachable by slug', async () => {
+    const listRes = await apiGet('/events');
+    const events = listRes.json() as any[];
+    if (events.length === 0) return; // no events seeded yet
+    const ev = events[0];
+    const res = await apiGet(`/events/${ev.slug}`);
+    expect(res.status()).toBe(200);
+    expect(res.json().id).toBe(ev.id);
+  });
+
+  test('OG preview endpoint returns HTML with og:title', async () => {
+    const listRes = await apiGet('/events');
+    const events = listRes.json() as any[];
+    if (events.length === 0) return;
+    const ev = events[0];
+    const apiBase = 'http://localhost:8080';
+    const r = await fetch(`${apiBase}/og/events/${ev.id}`);
+    expect(r.status).toBe(200);
+    const html = await r.text();
+    expect(html).toContain('og:title');
+    expect(html).toContain(ev.name);
+  });
+
+  test('OG image endpoint returns SVG', async () => {
+    const listRes = await apiGet('/events');
+    const events = listRes.json() as any[];
+    if (events.length === 0) return;
+    const ev = events[0];
+    const apiBase = 'http://localhost:8080';
+    const r = await fetch(`${apiBase}/og/events/${ev.id}/image`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toContain('image/svg+xml');
+    const svg = await r.text();
+    expect(svg).toContain('<svg');
+    expect(svg).toContain(ev.name.substring(0, 10));
+  });
+});
+
+// ─── Referral codes ────────────────────────────────────────────────────────
+
+test.describe('Referral codes', () => {
+  test('registered users have a referral code', async () => {
+    const token = await getToken(USER_EMAIL, USER_PASS);
+    const res = await apiGet('/users/me/referrals', token);
+    expect(res.status()).toBe(200);
+    const data = res.json();
+    expect(data.referralCode).toBeTruthy();
+    expect(data.referralCode.length).toBe(8);
+    expect(typeof data.referralCount).toBe('number');
+  });
+});
+
+// ─── Platform fee (voluntary contribution) ────────────────────────────────
+
+test.describe('Platform fee', () => {
+  let userToken: string;
+  let ticketTypeId: string;
+
+  test.beforeAll(async () => {
+    userToken = await getToken(USER_EMAIL, USER_PASS);
+    const events = (await apiGet('/events')).json() as any[];
+    const liveEvent = events.find((e: any) => e.ticketTypes?.length > 0);
+    if (liveEvent) ticketTypeId = liveEvent.ticketTypes[0].id;
+  });
+
+  test('order with zero platform fee is accepted', async () => {
+    if (!ticketTypeId) return;
+    const res = await apiPost('/orders', { ticketTypeId, quantity: 1, platformFee: 0 }, userToken);
+    expect(res.status()).toBe(201);
+    expect(res.json().platformFee).toBe(0);
+  });
+
+  test('order with $2 platform fee stores the contribution', async () => {
+    if (!ticketTypeId) return;
+    const res = await apiPost('/orders', { ticketTypeId, quantity: 1, platformFee: 2 }, userToken);
+    expect(res.status()).toBe(201);
+    expect(res.json().platformFee).toBe(2);
+  });
+
+  test('platform fee above $20 is clamped to $20', async () => {
+    if (!ticketTypeId) return;
+    const res = await apiPost('/orders', { ticketTypeId, quantity: 1, platformFee: 999 }, userToken);
+    expect(res.status()).toBe(201);
+    expect(res.json().platformFee).toBe(20);
+  });
+});
+
+// ─── Guest OTP checkout ────────────────────────────────────────────────────
+
+test.describe('Guest OTP checkout', () => {
+  const guestPhone = '+15125550199';
+  let guestToken: string;
+  let ticketTypeId: string;
+
+  test.beforeAll(async () => {
+    const events = (await apiGet('/events')).json() as any[];
+    const liveEvent = events.find((e: any) => e.ticketTypes?.length > 0);
+    if (liveEvent) ticketTypeId = liveEvent.ticketTypes[0].id;
+  });
+
+  test('request-otp returns devCode in mock mode', async () => {
+    const res = await apiPost('/auth/phone/request-otp', { phoneNumber: guestPhone });
+    expect(res.status()).toBe(200);
+    const data = res.json();
+    expect(data.devCode).toBeTruthy();
+    expect(data.devCode).toMatch(/^\d{6}$/);
+  });
+
+  test('verify-otp with correct code returns JWT with role Guest', async () => {
+    // Request a fresh OTP
+    const otpRes = await apiPost('/auth/phone/request-otp', { phoneNumber: guestPhone });
+    const { devCode } = otpRes.json();
+
+    const res = await apiPost('/auth/phone/verify-otp', { phoneNumber: guestPhone, code: devCode });
+    expect(res.status()).toBe(200);
+    const data = res.json();
+    expect(data.token).toBeTruthy();
+    expect(data.role).toBe('Guest');
+    guestToken = data.token;
+  });
+
+  test('guest can place an order', async () => {
+    if (!ticketTypeId || !guestToken) return;
+    const res = await apiPost('/orders', { ticketTypeId, quantity: 1 }, guestToken);
+    expect(res.status()).toBe(201);
+    expect(res.json().status).toBe('AwaitingPayment');
+  });
+
+  test('verify-otp with wrong code returns 401', async () => {
+    await apiPost('/auth/phone/request-otp', { phoneNumber: '+15125550188' });
+    const res = await apiPost('/auth/phone/verify-otp', { phoneNumber: '+15125550188', code: '000000' });
+    expect(res.status()).toBe(401);
+  });
+});
+
 // ─── Health check ──────────────────────────────────────────────────────────
 
 test.describe('API health', () => {

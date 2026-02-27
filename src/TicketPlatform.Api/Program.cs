@@ -42,6 +42,12 @@ if (string.Equals(paymentProvider, "Mock", StringComparison.OrdinalIgnoreCase))
 else
     builder.Services.AddScoped<IPaymentProvider, StripePaymentProvider>();
 
+var otpProvider = builder.Configuration["Otp:Provider"];
+if (string.Equals(otpProvider, "Mock", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddSingleton<IOtpSender, MockOtpSender>();
+else
+    builder.Services.AddScoped<IOtpSender, TwilioOtpSender>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {

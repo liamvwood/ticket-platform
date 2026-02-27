@@ -25,6 +25,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=ticketplatform;Username=postgres;Password=postgres"
       Payment__Provider: Mock
+      Otp__Provider: Mock
     depends_on:
       db:
         condition: service_healthy
