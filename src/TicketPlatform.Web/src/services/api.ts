@@ -66,6 +66,15 @@ export const api = {
   // Referrals
   getReferrals: () => request<{ referralCode: string; referralCount: number }>('/users/me/referrals'),
 
+  // OAuth / Social Login
+  getOAuthProviders: () =>
+    request<{ providers: string[] }>('/auth/oauth/providers').then(r => r.providers),
+  oauthCallback: (provider: string, code: string, redirectUri: string, codeVerifier?: string) =>
+    request<{ token: string; email: string; role: string }>('/auth/oauth/callback', {
+      method: 'POST',
+      body: JSON.stringify({ provider, code, redirectUri, codeVerifier }),
+    }),
+
   // Check-in
   validateQr: (token: string) =>
     request<any>('/checkin/validate', { method: 'POST', body: JSON.stringify({ token }) }),

@@ -11,6 +11,7 @@ import './pages/page-auth.js';
 import './pages/page-venue-dashboard.js';
 import './pages/page-venue-new-event.js';
 import './pages/page-scanner.js';
+import './pages/page-oauth-callback.js';
 import './components/tp-nav.js';
 
 interface Route {
@@ -45,6 +46,7 @@ export class TpApp extends LitElement {
     { pattern: /^\/my-tickets$/, render: () => html`<page-my-tickets></page-my-tickets>` },
     { pattern: /^\/login$/, render: () => html`<page-auth mode="login"></page-auth>` },
     { pattern: /^\/register$/, render: () => html`<page-auth mode="register"></page-auth>` },
+    { pattern: /^\/auth\/callback$/, render: () => html`<page-oauth-callback></page-oauth-callback>` },
     { pattern: /^\/venue(\/)?$/, render: () => html`<page-venue-dashboard></page-venue-dashboard>` },
     { pattern: /^\/venue\/events\/new$/, render: () => html`<page-venue-new-event></page-venue-new-event>` },
     { pattern: /^\/scan$/, render: () => html`<page-scanner></page-scanner>` },

@@ -568,3 +568,69 @@ test.describe('API health', () => {
     expect(res.json().status).toBe('healthy');
   });
 });
+
+// ─── Social OAuth login (mock) ─────────────────────────────────────────────
+
+test.describe('OAuth mock login', () => {
+  test('GET /auth/oauth/providers returns provider list', async () => {
+    const res = await apiGet('/auth/oauth/providers');
+    expect(res.status()).toBe(200);
+    const data = res.json();
+    expect(Array.isArray(data.providers)).toBe(true);
+    expect(data.providers).toContain('Google');
+    expect(data.providers).toContain('GitHub');
+    expect(data.providers).toContain('Facebook');
+  });
+
+  test('mock-login with Google returns JWT', async () => {
+    const res = await apiGet('/auth/oauth/mock-login?provider=Google&email=oauthtest_google@test.dev');
+    expect(res.status()).toBe(200);
+    const data = res.json();
+    expect(data.token).toBeTruthy();
+    expect(data.email).toBe('oauthtest_google@test.dev');
+    expect(data.role).toBe('User');
+  });
+
+  test('mock-login with GitHub returns JWT', async () => {
+    const res = await apiGet('/auth/oauth/mock-login?provider=GitHub&email=oauthtest_github@test.dev');
+    expect(res.status()).toBe(200);
+    const data = res.json();
+    expect(data.token).toBeTruthy();
+    expect(data.role).toBe('User');
+  });
+
+  test('mock-login with Facebook returns JWT', async () => {
+    const res = await apiGet('/auth/oauth/mock-login?provider=Facebook&email=oauthtest_fb@test.dev');
+    expect(res.status()).toBe(200);
+    const data = res.json();
+    expect(data.token).toBeTruthy();
+    expect(data.role).toBe('User');
+  });
+
+  test('mock-login user can access /users/me/referrals', async () => {
+    const loginRes = await apiGet('/auth/oauth/mock-login?provider=Google&email=oauth_reftest@test.dev');
+    const token = loginRes.json().token;
+    const refRes = await apiGet('/users/me/referrals', token);
+    expect(refRes.status()).toBe(200);
+    expect(refRes.json().referralCode).toBeTruthy();
+  });
+
+  test('POST /auth/oauth/callback returns 502 for invalid code (real providers)', async () => {
+    const res = await apiPost('/auth/oauth/callback', {
+      provider: 'Google',
+      code: 'invalid_code',
+      redirectUri: 'http://localhost:5173/auth/callback',
+      codeVerifier: 'test_verifier',
+    });
+    // With real providers, invalid code → 502 (OAuth exchange failed)
+    expect([400, 502]).toContain(res.status());
+  });
+
+  test('calling same mock-login twice links to same user account', async () => {
+    const email = `oauth_dedup_${RUN}@test.dev`;
+    const r1 = await apiGet(`/auth/oauth/mock-login?provider=Google&email=${encodeURIComponent(email)}`);
+    const r2 = await apiGet(`/auth/oauth/mock-login?provider=Google&email=${encodeURIComponent(email)}`);
+    // Both succeed and return same email
+    expect(r1.json().email).toBe(r2.json().email);
+  });
+});

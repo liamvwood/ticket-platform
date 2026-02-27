@@ -12,7 +12,12 @@ namespace TicketPlatform.Api.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController(AppDbContext db, TokenService tokenService, IOtpSender otpSender) : ControllerBase
+public class AuthController(
+    AppDbContext db,
+    TokenService tokenService,
+    IOtpSender otpSender,
+    IEnumerable<IOAuthProvider> oauthProviders,
+    IConfiguration config) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest req)
@@ -151,5 +156,111 @@ public class AuthController(AppDbContext db, TokenService tokenService, IOtpSend
 
         var count = await db.Orders.CountAsync(o => o.ReferredBy == user.ReferralCode);
         return Ok(new { referralCode = user.ReferralCode, referralCount = count });
+    }
+
+    // GET /auth/oauth/providers — list enabled providers for the frontend
+    [HttpGet("oauth/providers")]
+    public ActionResult<object> GetOAuthProviders()
+    {
+        var isMock = config["OAuth:UseMock"] == "true";
+        var providers = isMock
+            ? new[] { "Google", "GitHub", "Facebook" }
+            : oauthProviders.Where(p => p is not MockOAuthProvider).Select(p => p.ProviderName).ToArray();
+        return Ok(new { providers });
+    }
+
+    // GET /auth/oauth/authorize?provider=Google&redirectUri=...&state=...&codeChallenge=...
+    [HttpGet("oauth/authorize")]
+    public ActionResult OAuthAuthorize(
+        [FromQuery] string provider,
+        [FromQuery] string redirectUri,
+        [FromQuery] string state,
+        [FromQuery] string codeChallenge)
+    {
+        var p = oauthProviders.FirstOrDefault(p =>
+            string.Equals(p.ProviderName, provider, StringComparison.OrdinalIgnoreCase));
+        if (p is null || p is MockOAuthProvider)
+            return BadRequest("Unknown or unavailable provider.");
+
+        return Redirect(p.BuildAuthorizationUrl(redirectUri, state, codeChallenge));
+    }
+
+    // POST /auth/oauth/callback
+    [HttpPost("oauth/callback")]
+    public async Task<ActionResult<AuthResponse>> OAuthCallback([FromBody] OAuthCallbackRequest req)
+    {
+        var p = oauthProviders.FirstOrDefault(p =>
+            string.Equals(p.ProviderName, req.Provider, StringComparison.OrdinalIgnoreCase));
+        if (p is null) return BadRequest("Unknown provider.");
+
+        OAuthUserInfo info;
+        try
+        {
+            info = await p.GetUserInfoAsync(req.Code, req.RedirectUri, req.CodeVerifier ?? string.Empty);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(502, new { error = "OAuth exchange failed.", detail = ex.Message });
+        }
+
+        var user = await UpsertOAuthUserAsync(info);
+        return Ok(new AuthResponse(tokenService.GenerateToken(user), user.Email, user.Role));
+    }
+
+    // GET /auth/oauth/mock-login?provider=Google&email=test@example.com (dev/test only)
+    [HttpGet("oauth/mock-login")]
+    public async Task<ActionResult<AuthResponse>> MockOAuthLogin(
+        [FromQuery] string provider = "Google",
+        [FromQuery] string email = "mockuser@example.com")
+    {
+        if (config["OAuth:UseMock"] != "true")
+            return NotFound();
+
+        var mock = oauthProviders.OfType<MockOAuthProvider>().FirstOrDefault();
+        if (mock is null) return NotFound();
+
+        var info = await mock.GetUserInfoAsync($"{provider}:{email}", string.Empty, string.Empty);
+        var user = await UpsertOAuthUserAsync(info);
+        return Ok(new AuthResponse(tokenService.GenerateToken(user), user.Email, user.Role));
+    }
+
+    private async Task<User> UpsertOAuthUserAsync(OAuthUserInfo info)
+    {
+        // 1. Look up by provider + external ID (returning user via same provider)
+        var user = await db.Users.FirstOrDefaultAsync(u =>
+            u.ExternalProvider == info.Provider && u.ExternalId == info.Id);
+
+        if (user is not null)
+            return user;
+
+        // 2. Link to existing account by email
+        if (!string.IsNullOrEmpty(info.Email) && !info.Email.Contains("@noemail.local"))
+            user = await db.Users.FirstOrDefaultAsync(u => u.Email == info.Email.ToLowerInvariant());
+
+        if (user is not null)
+        {
+            // Link the OAuth identity to the existing account
+            user.ExternalProvider ??= info.Provider;
+            user.ExternalId ??= info.Id;
+            await db.SaveChangesAsync();
+            return user;
+        }
+
+        // 3. Create new user
+        var userId = Guid.NewGuid();
+        user = new User
+        {
+            Id = userId,
+            Email = info.Email?.ToLowerInvariant() ?? string.Empty,
+            PhoneNumber = string.Empty,
+            PasswordHash = string.Empty,
+            Role = "User",
+            ExternalProvider = info.Provider,
+            ExternalId = info.Id,
+            ReferralCode = SlugHelper.GenerateReferralCode(userId)
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        return user;
     }
 }

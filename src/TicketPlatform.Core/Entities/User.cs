@@ -9,6 +9,9 @@ public class User
     public string Role { get; set; } = "User"; // User | VenueAdmin | Scanner | Guest
     public bool PhoneVerified { get; set; }
     public string ReferralCode { get; set; } = string.Empty;
+    // Social / OAuth login
+    public string? ExternalProvider { get; set; } // "Google" | "GitHub" | "Facebook"
+    public string? ExternalId { get; set; }       // provider's unique user ID
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<Order> Orders { get; set; } = [];

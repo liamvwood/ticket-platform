@@ -48,6 +48,14 @@ if (string.Equals(otpProvider, "Mock", StringComparison.OrdinalIgnoreCase))
 else
     builder.Services.AddScoped<IOtpSender, TwilioOtpSender>();
 
+// OAuth providers — always register all; mock endpoint only active when OAuth:UseMock=true
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<MockOAuthProvider>();
+builder.Services.AddTransient<IOAuthProvider, MockOAuthProvider>(sp => sp.GetRequiredService<MockOAuthProvider>());
+builder.Services.AddTransient<IOAuthProvider, GoogleOAuthProvider>();
+builder.Services.AddTransient<IOAuthProvider, GitHubOAuthProvider>();
+builder.Services.AddTransient<IOAuthProvider, FacebookOAuthProvider>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {

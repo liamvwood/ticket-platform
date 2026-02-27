@@ -22,6 +22,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<User>(e => {
             e.HasIndex(u => u.Email).IsUnique();
             e.HasIndex(u => u.ReferralCode).IsUnique();
+            e.HasIndex(u => new { u.ExternalProvider, u.ExternalId })
+             .IsUnique()
+             .HasFilter("\"ExternalProvider\" IS NOT NULL AND \"ExternalId\" IS NOT NULL");
         });
 
         modelBuilder.Entity<Event>(e =>

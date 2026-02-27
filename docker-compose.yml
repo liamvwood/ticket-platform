@@ -26,6 +26,7 @@ services:
       ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=ticketplatform;Username=postgres;Password=postgres"
       Payment__Provider: Mock
       Otp__Provider: Mock
+      OAuth__UseMock: "true"
     depends_on:
       db:
         condition: service_healthy

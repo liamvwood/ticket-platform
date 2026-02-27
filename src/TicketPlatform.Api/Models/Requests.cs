@@ -5,6 +5,7 @@ public record LoginRequest(string Email, string Password);
 public record AuthResponse(string Token, string Email, string Role);
 public record PhoneOtpRequest(string PhoneNumber);
 public record PhoneVerifyRequest(string PhoneNumber, string Code);
+public record OAuthCallbackRequest(string Provider, string Code, string RedirectUri, string? CodeVerifier);
 
 public record CreateEventRequest(
     Guid VenueId,
