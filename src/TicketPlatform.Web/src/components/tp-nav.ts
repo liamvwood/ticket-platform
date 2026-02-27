@@ -91,6 +91,7 @@ export class TpNav extends LitElement {
             <a @click=${() => navigate('/my-tickets')}>My Tickets</a>
             ${this.role === 'VenueAdmin' ? html`<a @click=${() => navigate('/venue')}>Venue Portal</a>` : ''}
             ${this.role === 'Scanner' || this.role === 'VenueAdmin' ? html`<a @click=${() => navigate('/scan')}>Scanner</a>` : ''}
+            ${this.role === 'AppOwner' ? html`<a @click=${() => navigate('/admin/invites')}>Admin</a>` : ''}
             <button class="btn btn-ghost" @click=${() => auth.logout()}>Logout</button>
           ` : html`
             <a @click=${() => navigate('/login')}>Login</a>

@@ -634,3 +634,77 @@ test.describe('OAuth mock login', () => {
     expect(r1.json().email).toBe(r2.json().email);
   });
 });
+
+// ─── Venue invite flow ─────────────────────────────────────────────────────
+
+test.describe('Venue invite flow', () => {
+  const OWNER_EMAIL = 'owner@austintickets.dev';
+  const OWNER_PASS = 'ChangeMe123!';
+
+  let ownerToken = '';
+  let inviteToken = '';
+  const venueEmail = `invited_venue_${RUN}@test.dev`;
+  const venueName = `Test Venue ${RUN}`;
+
+  test('AppOwner can log in', async () => {
+    const res = await apiPost('/auth/login', { email: OWNER_EMAIL, password: OWNER_PASS });
+    expect(res.status()).toBe(200);
+    expect(res.json().role).toBe('AppOwner');
+    ownerToken = res.json().token;
+  });
+
+  test('AppOwner can create an invite', async () => {
+    if (!ownerToken) return;
+    const res = await apiPost('/admin/invites', { email: venueEmail, venueName }, ownerToken);
+    expect(res.status()).toBe(200);
+    const data = res.json();
+    expect(data.inviteUrl).toContain('/invite/');
+    expect(data.email).toBe(venueEmail);
+    inviteToken = data.token;
+  });
+
+  test('invite details are visible via GET /invites/{token}', async () => {
+    if (!inviteToken) return;
+    const res = await apiGet(`/invites/${inviteToken}`);
+    expect(res.status()).toBe(200);
+    expect(res.json().email).toBe(venueEmail);
+    expect(res.json().venueName).toBe(venueName);
+  });
+
+  test('invite accept creates VenueAdmin user and returns JWT', async () => {
+    if (!inviteToken) return;
+    const res = await apiPost(`/invites/${inviteToken}/accept`, { password: 'VenuePass123!', phoneNumber: '' });
+    expect(res.status()).toBe(201);
+    const data = res.json();
+    expect(data.token).toBeTruthy();
+    expect(data.role).toBe('VenueAdmin');
+    expect(data.email).toBe(venueEmail);
+  });
+
+  test('accepted invite cannot be reused', async () => {
+    if (!inviteToken) return;
+    const res = await apiPost(`/invites/${inviteToken}/accept`, { password: 'AnotherPass123!' });
+    expect(res.status()).toBe(409); // Conflict
+  });
+
+  test('invalid invite token returns 404', async () => {
+    const res = await apiGet('/invites/totally-bogus-token-xyz');
+    expect(res.status()).toBe(404);
+  });
+
+  test('non-AppOwner cannot create invites', async () => {
+    if (!ownerToken) return;
+    // Use a regular user token
+    const loginRes = await apiPost('/auth/login', { email: USER_EMAIL, password: USER_PASS });
+    const userToken = loginRes.json().token;
+    const res = await apiPost('/admin/invites', { email: 'x@x.com', venueName: 'Test' }, userToken);
+    expect(res.status()).toBe(403);
+  });
+
+  test('AppOwner can list invites', async () => {
+    if (!ownerToken) return;
+    const res = await apiGet('/admin/invites', ownerToken);
+    expect(res.status()).toBe(200);
+    expect(Array.isArray(res.json())).toBe(true);
+  });
+});

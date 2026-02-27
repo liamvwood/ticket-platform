@@ -98,4 +98,36 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
 
+// Seed AppOwner on startup (idempotent upsert)
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<TicketPlatform.Infrastructure.Data.AppDbContext>();
+    var cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var ownerEmail = cfg["AppOwner:Email"];
+    var ownerPassword = cfg["AppOwner:Password"];
+    if (!string.IsNullOrWhiteSpace(ownerEmail) && !string.IsNullOrWhiteSpace(ownerPassword))
+    {
+        var normalizedEmail = ownerEmail.ToLowerInvariant();
+        var existing = db.Users.FirstOrDefault(u => u.Email == normalizedEmail);
+        if (existing is null)
+        {
+            var ownerId = Guid.NewGuid();
+            db.Users.Add(new TicketPlatform.Core.Entities.User
+            {
+                Id = ownerId,
+                Email = normalizedEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(ownerPassword),
+                Role = "AppOwner",
+                ReferralCode = TicketPlatform.Api.Services.SlugHelper.GenerateReferralCode(ownerId),
+            });
+            db.SaveChanges();
+        }
+        else if (existing.Role != "AppOwner")
+        {
+            existing.Role = "AppOwner";
+            db.SaveChanges();
+        }
+    }
+}
+
 app.Run();

@@ -7,6 +7,9 @@ public record PhoneOtpRequest(string PhoneNumber);
 public record PhoneVerifyRequest(string PhoneNumber, string Code);
 public record OAuthCallbackRequest(string Provider, string Code, string RedirectUri, string? CodeVerifier);
 
+public record CreateInviteRequest(string Email, string VenueName);
+public record AcceptInviteRequest(string Password, string? PhoneNumber);
+
 public record CreateEventRequest(
     Guid VenueId,
     string Name,

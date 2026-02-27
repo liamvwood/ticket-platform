@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
     public DbSet<PhoneVerification> PhoneVerifications => Set<PhoneVerification>();
+    public DbSet<VenueInvite> VenueInvites => Set<VenueInvite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,6 +49,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .HasColumnType("xid")
             .ValueGeneratedOnAddOrUpdate()
             .IsConcurrencyToken();
+
+        modelBuilder.Entity<VenueInvite>(e =>
+            e.HasIndex(i => i.Token).IsUnique());
 
         modelBuilder.Entity<Ticket>()
             .HasOne(t => t.CheckIn)

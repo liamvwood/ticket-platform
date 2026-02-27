@@ -12,6 +12,8 @@ import './pages/page-venue-dashboard.js';
 import './pages/page-venue-new-event.js';
 import './pages/page-scanner.js';
 import './pages/page-oauth-callback.js';
+import './pages/page-admin-invites.js';
+import './pages/page-invite-accept.js';
 import './components/tp-nav.js';
 
 interface Route {
@@ -47,6 +49,8 @@ export class TpApp extends LitElement {
     { pattern: /^\/login$/, render: () => html`<page-auth mode="login"></page-auth>` },
     { pattern: /^\/register$/, render: () => html`<page-auth mode="register"></page-auth>` },
     { pattern: /^\/auth\/callback$/, render: () => html`<page-oauth-callback></page-oauth-callback>` },
+    { pattern: /^\/admin\/invites$/, render: () => html`<page-admin-invites></page-admin-invites>` },
+    { pattern: /^\/invite\/([^/]+)$/, render: m => html`<page-invite-accept .token=${m[1]}></page-invite-accept>` },
     { pattern: /^\/venue(\/)?$/, render: () => html`<page-venue-dashboard></page-venue-dashboard>` },
     { pattern: /^\/venue\/events\/new$/, render: () => html`<page-venue-new-event></page-venue-new-event>` },
     { pattern: /^\/scan$/, render: () => html`<page-scanner></page-scanner>` },

@@ -6,7 +6,7 @@ public class User
     public string Email { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
-    public string Role { get; set; } = "User"; // User | VenueAdmin | Scanner | Guest
+    public string Role { get; set; } = "User"; // User | VenueAdmin | Scanner | Guest | AppOwner
     public bool PhoneVerified { get; set; }
     public string ReferralCode { get; set; } = string.Empty;
     // Social / OAuth login
