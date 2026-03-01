@@ -1,0 +1,35 @@
+{
+  "name": "Ticketing Platform",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/aws-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    }
+  },
+  
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        "aws-toolkit-vscode.aws-toolkit-vscode",
+        "github.copilot",
+        "github.copilot-chat"
+      ]
+    }
+  },
+  
+  "remoteEnv": {
+    "AWS_CLI_AUTO_PROMPT": "on-partial"
+  },
+  
+  "postCreateCommand": "npm install -g aws-cdk && (gh extension install github/gh-copilot || gh extension upgrade github/gh-copilot) && aws --version && cdk --version && gh --version && gh copilot --version"
+}
