@@ -22,12 +22,18 @@ builder.Services.AddOpenApi();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("frontend", policy =>
-        policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://localhost:4173")
+        policy
+            .SetIsOriginAllowed(origin =>
+            {
+                var uri = new Uri(origin);
+                // Allow localhost (any port) and GitHub Codespaces forwarded URLs
+                return uri.Host == "localhost"
+                    || uri.Host == "127.0.0.1"
+                    || uri.Host.EndsWith(".app.github.dev");
+            })
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -91,7 +97,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("frontend");
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
