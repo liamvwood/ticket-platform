@@ -31,5 +31,7 @@
     "AWS_CLI_AUTO_PROMPT": "on-partial"
   },
   
-  "postCreateCommand": "npm install -g aws-cdk && (gh extension install github/gh-copilot || gh extension upgrade github/gh-copilot) && aws --version && cdk --version && gh --version && gh copilot --version"
+  "postCreateCommand": "npm install -g aws-cdk && (gh extension install github/gh-copilot || gh extension upgrade github/gh-copilot) && curl -LsSf https://astral.sh/uv/install.sh | sh && aws --version && cdk --version && gh --version && gh copilot --version && uv --version",
+
+  "postStartCommand": "mkdir -p ~/.copilot && cp ${containerWorkspaceFolder}/mcp-config.json ~/.copilot/mcp-config.json"
 }
