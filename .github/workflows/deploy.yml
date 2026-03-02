@@ -80,9 +80,9 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -d ticketplatform -c "
-            INSERT INTO \"Venues\" (\"Id\",\"Name\",\"Address\",\"ContactEmail\",\"CreatedAt\")
+            INSERT INTO \"Venues\" (\"Id\",\"Name\",\"Address\",\"CreatedAt\")
             VALUES ('a0000000-0000-0000-0000-000000000001',
-                    'Stubb''s Waller Creek','801 Red River St','hello@stubbs.com',now())
+                    'Stubb''s Waller Creek','801 Red River St',now())
             ON CONFLICT DO NOTHING;"
 
       # ── Start API for E2E ────────────────────────────────────
