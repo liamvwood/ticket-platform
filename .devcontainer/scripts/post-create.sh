@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+FAILURES=()
+
+step() {
+  local name="$1"; shift
+  printf '\n▶ %s\n' "$name"
+  if "$@"; then
+    printf '✓ %s\n' "$name"
+    return 0
+  else
+    printf '✗ %s FAILED\n' "$name"
+    FAILURES+=("$name")
+    return 1
+  fi
+}
+
+# Independent installs
+step "aws-cdk"              npm install -g aws-cdk
+step "gh-copilot extension" bash -c 'gh extension install github/gh-copilot 2>/dev/null || gh extension upgrade github/gh-copilot'
+
+# uv → mcp-proxy-for-aws (dependent chain: mcp-proxy-for-aws requires uv)
+if step "uv" bash -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'; then
+  # shellcheck source=/dev/null
+  source "$HOME/.local/bin/env"
+  step "mcp-proxy-for-aws" uv tool install mcp-proxy-for-aws
+else
+  FAILURES+=("mcp-proxy-for-aws (skipped: uv install failed)")
+fi
+
+# Verification (informational only — failures here don't indicate install failure)
+printf '\n--- Installed versions ---\n'
+aws     --version  2>&1 || true
+cdk     --version  2>&1 || true
+gh      --version  2>&1 || true
+gh copilot --version 2>&1 || true
+uv      --version  2>&1 || true
+
+# Summary
+if (( ${#FAILURES[@]} > 0 )); then
+  printf '\n⚠ WARNING: The following setup steps failed:\n'
+  printf '  - %s\n' "${FAILURES[@]}"
+  printf 'The devcontainer may be missing some tools. Check the log above for details.\n'
+else
+  printf '\n✓ All setup steps completed successfully.\n'
+fi
