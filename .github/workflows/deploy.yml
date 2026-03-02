@@ -95,13 +95,13 @@ jobs:
           Payment__Provider: Mock
           Otp__Provider: Mock
           Jwt__Secret: ci-test-secret-at-least-32-characters-long
-        run: nohup dotnet run -c Release --no-build > /tmp/api.log 2>&1 &
+        run: nohup dotnet run -c Release > /tmp/api.log 2>&1 &
 
       - name: Wait for API
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 45); do
             curl -sf http://localhost:8080/healthz && echo "API ready" && break
-            echo "Waiting for API... ($i/30)"
+            echo "Waiting for API... ($i/45)"
             sleep 2
           done
 
@@ -133,7 +133,8 @@ jobs:
       # ── Verify API still alive before E2E ───────────────────
       - name: Verify API alive
         run: |
-          curl -sf http://localhost:8080/healthz || (echo "API died — last log:"; tail -50 /tmp/api.log; exit 1)
+          ps aux | grep -v grep | grep dotnet || echo "No dotnet process found!"
+          curl -sf http://localhost:8080/healthz || (echo "=== API died — full log: ==="; cat /tmp/api.log; exit 1)
 
       # ── Playwright E2E tests ─────────────────────────────────
       - name: Install Playwright browsers
@@ -207,16 +208,9 @@ jobs:
             --name ${{ secrets.EKS_CLUSTER_NAME }} \
             --region ${{ env.AWS_REGION }}
 
-      # ── Run DB migrations against live DB ───────────────────
-      - name: Run DB migrations
-        env:
-          ConnectionStrings__DefaultConnection: ${{ secrets.TEST_DB_CONNECTION_STRING }}
-        run: |
-          dotnet tool install --global dotnet-ef --version 10.* 2>/dev/null || true
-          cd src/TicketPlatform.Api
-          dotnet ef database update --project ../TicketPlatform.Infrastructure --no-build
-
       # ── Deploy via Helm ──────────────────────────────────────
+      # Note: DB migrations run automatically via db.Database.Migrate() in Program.cs
+      # on pod startup — EKS pods have VPC access to RDS, GitHub Actions runner does not.
       - name: Helm upgrade (test ring)
         run: |
           helm upgrade --install ticket-platform-test ./helm \
