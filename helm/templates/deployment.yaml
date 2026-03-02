@@ -43,6 +43,10 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: stripeWebhookSecret
+            {{- range $key, $val := .Values.extraEnv }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
           resources:
             requests:
               cpu: {{ .Values.resources.requests.cpu }}

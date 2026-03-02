@@ -1,0 +1,36 @@
+# Test ring overrides — applied on top of values.yaml
+# Hostnames and image tags are injected by the CI/CD pipeline via --set flags
+
+replicaCount: 1
+
+image:
+  pullPolicy: Always
+
+frontend:
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  ingress:
+    enabled: true
+    className: nginx
+    # host and tls overridden by CI: --set frontend.ingress.host=...
+    tls: true
+
+ingress:
+  enabled: true
+  className: nginx
+  # host overridden by CI: --set ingress.host=...
+  tls: true
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 1
+
+env:
+  ASPNETCORE_ENVIRONMENT: Development
+
+# Payment and OTP use mock providers for the test ring — no Stripe or Twilio needed
+extraEnv:
+  Payment__Provider: Mock
+  Otp__Provider: Mock

@@ -1,0 +1,238 @@
+name: CI/CD – Test Ring
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  API_IMAGE: ticket-platform-api
+  FRONTEND_IMAGE: ticket-platform-frontend
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # 1. BUILD & TEST
+  # ─────────────────────────────────────────────────────────────
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ticketplatform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── .NET API build ──────────────────────────────────────
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore & build .NET
+        run: |
+          dotnet restore TicketPlatform.slnx
+          dotnet build TicketPlatform.slnx -c Release --no-restore
+
+      # ── Frontend build ──────────────────────────────────────
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/TicketPlatform.Web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: src/TicketPlatform.Web
+        run: npm ci
+
+      - name: Build frontend (type-check + bundle)
+        working-directory: src/TicketPlatform.Web
+        run: npm run build
+
+      # ── Apply DB migrations ──────────────────────────────────
+      - name: Install EF Core tools
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Apply migrations
+        working-directory: src/TicketPlatform.Api
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=ticketplatform;Username=postgres;Password=postgres"
+        run: dotnet ef database update --project ../TicketPlatform.Infrastructure
+
+      # ── Seed test data ───────────────────────────────────────
+      - name: Seed test data
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d ticketplatform -c "
+            INSERT INTO \"Venues\" (\"Id\",\"Name\",\"Address\",\"ContactEmail\",\"CreatedAt\")
+            VALUES ('a0000000-0000-0000-0000-000000000001',
+                    'Stubb''s Waller Creek','801 Red River St','hello@stubbs.com',now())
+            ON CONFLICT DO NOTHING;"
+
+      # ── Start API for E2E ────────────────────────────────────
+      - name: Start API
+        working-directory: src/TicketPlatform.Api
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://localhost:8080
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=ticketplatform;Username=postgres;Password=postgres"
+          Payment__Provider: Mock
+          Otp__Provider: Mock
+          Jwt__Secret: ci-test-secret-at-least-32-characters-long
+        run: dotnet run &
+
+      - name: Wait for API
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080/healthz && echo "API ready" && break
+            echo "Waiting for API... ($i/30)"
+            sleep 2
+          done
+
+      # ── Seed E2E users ───────────────────────────────────────
+      - name: Seed E2E users
+        run: |
+          curl -sf -X POST http://localhost:8080/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"email":"e2ebuyer@austintickets.dev","password":"Password123!","role":"User"}' || true
+          curl -sf -X POST http://localhost:8080/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"email":"venue@austintickets.dev","password":"Password123!","role":"VenueAdmin"}' || true
+
+      # ── Start frontend dev server ────────────────────────────
+      - name: Start frontend dev server
+        working-directory: src/TicketPlatform.Web
+        run: npm run dev &
+
+      - name: Wait for frontend
+        run: |
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:5173 && echo "Frontend ready" && break
+            echo "Waiting for frontend... ($i/20)"
+            sleep 2
+          done
+
+      # ── Playwright E2E tests ─────────────────────────────────
+      - name: Install Playwright browsers
+        working-directory: src/TicketPlatform.Web
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E tests
+        working-directory: src/TicketPlatform.Web
+        run: npx playwright test
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: src/TicketPlatform.Web/e2e-report/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # 2. BUILD IMAGES & DEPLOY TO EKS
+  # ─────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Test EKS
+    runs-on: ubuntu-latest
+    needs: test
+    environment: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ── Build & push API image ───────────────────────────────
+      - name: Build & push API image
+        run: |
+          IMAGE=$ECR_REGISTRY/$API_IMAGE:${{ github.sha }}
+          docker build -t $IMAGE -f Dockerfile .
+          docker push $IMAGE
+          # Also tag as latest for convenience
+          docker tag $IMAGE $ECR_REGISTRY/$API_IMAGE:latest
+          docker push $ECR_REGISTRY/$API_IMAGE:latest
+          echo "api_image=$IMAGE" >> $GITHUB_ENV
+
+      # ── Build & push frontend image ──────────────────────────
+      - name: Build & push frontend image
+        run: |
+          IMAGE=$ECR_REGISTRY/$FRONTEND_IMAGE:${{ github.sha }}
+          docker build \
+            --build-arg VITE_API_URL=https://${{ secrets.TEST_API_HOST }} \
+            -t $IMAGE \
+            -f Dockerfile.frontend .
+          docker push $IMAGE
+          docker tag $IMAGE $ECR_REGISTRY/$FRONTEND_IMAGE:latest
+          docker push $ECR_REGISTRY/$FRONTEND_IMAGE:latest
+          echo "frontend_image=$IMAGE" >> $GITHUB_ENV
+
+      # ── Configure kubectl ────────────────────────────────────
+      - name: Update kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig \
+            --name ${{ secrets.EKS_CLUSTER_NAME }} \
+            --region ${{ env.AWS_REGION }}
+
+      # ── Deploy via Helm ──────────────────────────────────────
+      - name: Helm upgrade (test ring)
+        run: |
+          helm upgrade --install ticket-platform-test ./helm \
+            --namespace ticket-platform-test \
+            --create-namespace \
+            --values helm/values-test.yaml \
+            --set image.repository=$ECR_REGISTRY/$API_IMAGE \
+            --set image.tag=${{ github.sha }} \
+            --set frontend.image.repository=$ECR_REGISTRY/$FRONTEND_IMAGE \
+            --set frontend.image.tag=${{ github.sha }} \
+            --set ingress.host=${{ secrets.TEST_API_HOST }} \
+            --set frontend.ingress.host=${{ secrets.TEST_FRONTEND_HOST }} \
+            --set secrets.connectionString=${{ secrets.TEST_DB_CONNECTION_STRING }} \
+            --set secrets.jwtSecret=${{ secrets.TEST_JWT_SECRET }} \
+            --set secrets.stripeSecretKey="unused" \
+            --set secrets.stripeWebhookSecret="unused" \
+            --timeout 5m \
+            --wait
+
+      # ── Smoke test the live HTTPS endpoint ───────────────────
+      - name: Smoke test – API health
+        run: |
+          echo "Testing https://${{ secrets.TEST_API_HOST }}/healthz"
+          for i in $(seq 1 12); do
+            curl -sf https://${{ secrets.TEST_API_HOST }}/healthz && echo "✅ API healthy" && break
+            echo "Waiting for API ingress... ($i/12)"
+            sleep 10
+          done
+
+      - name: Smoke test – Frontend
+        run: |
+          echo "Testing https://${{ secrets.TEST_FRONTEND_HOST }}"
+          curl -sf https://${{ secrets.TEST_FRONTEND_HOST }} | grep -q "Austin Tickets\|ticket" \
+            && echo "✅ Frontend reachable" \
+            || (echo "❌ Frontend check failed" && exit 1)

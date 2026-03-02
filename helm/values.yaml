@@ -5,6 +5,18 @@ image:
   pullPolicy: IfNotPresent
   tag: "latest"
 
+frontend:
+  replicaCount: 2
+  image:
+    repository: ticket-platform-frontend
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  ingress:
+    enabled: true
+    className: nginx
+    host: tickets.austin.local
+    tls: false
+
 service:
   type: ClusterIP
   port: 80
@@ -13,8 +25,8 @@ service:
 ingress:
   enabled: true
   className: nginx
-  host: tickets.austin.local
-  tls: []
+  host: api.tickets.austin.local
+  tls: false
 
 resources:
   requests:

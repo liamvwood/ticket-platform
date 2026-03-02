@@ -6,6 +6,9 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "1m"
     nginx.ingress.kubernetes.io/limit-rps: "100"
+    {{- if .Values.ingress.tls }}
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
@@ -21,6 +24,8 @@ spec:
                   number: {{ .Values.service.port }}
   {{- if .Values.ingress.tls }}
   tls:
-    {{- toYaml .Values.ingress.tls | nindent 4 }}
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Release.Name }}-api-tls
   {{- end }}
 {{- end }}
