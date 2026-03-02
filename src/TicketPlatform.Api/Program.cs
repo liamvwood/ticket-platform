@@ -19,6 +19,7 @@ builder.Services.AddControllers()
     });
 builder.Services.AddOpenApi();
 
+var corsAllowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("frontend", policy =>
@@ -26,10 +27,11 @@ builder.Services.AddCors(options =>
             .SetIsOriginAllowed(origin =>
             {
                 var uri = new Uri(origin);
-                // Allow localhost (any port) and GitHub Codespaces forwarded URLs
                 return uri.Host == "localhost"
                     || uri.Host == "127.0.0.1"
-                    || uri.Host.EndsWith(".app.github.dev");
+                    || uri.Host.EndsWith(".app.github.dev")
+                    || uri.Host.EndsWith(".sslip.io")
+                    || corsAllowedOrigins.Any(h => uri.Host == h || uri.Host.EndsWith("." + h));
             })
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -105,6 +107,13 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
 
+// Apply any pending EF Core migrations on startup (safe to run multiple times)
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<TicketPlatform.Infrastructure.Data.AppDbContext>();
+    db.Database.Migrate();
+}
+
 // Seed AppOwner on startup (idempotent upsert)
 using (var scope = app.Services.CreateScope())
 {
@@ -134,6 +143,27 @@ using (var scope = app.Services.CreateScope())
             existing.Role = "AppOwner";
             db.SaveChanges();
         }
+    }
+}
+
+// Seed test venue in Development/Test (idempotent — used by E2E tests)
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<TicketPlatform.Infrastructure.Data.AppDbContext>();
+    var testVenueId = Guid.Parse("a0000000-0000-0000-0000-000000000001");
+    if (!db.Venues.Any(v => v.Id == testVenueId))
+    {
+        db.Venues.Add(new TicketPlatform.Core.Entities.Venue
+        {
+            Id = testVenueId,
+            Name = "Stubb's Waller Creek",
+            Address = "801 Red River St",
+            City = "Austin",
+            State = "TX",
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+        db.SaveChanges();
     }
 }
 

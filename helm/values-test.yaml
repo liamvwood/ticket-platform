@@ -6,6 +6,9 @@ replicaCount: 1
 image:
   pullPolicy: Always
 
+imagePullSecrets:
+  - ecr-pull-secret
+
 frontend:
   replicaCount: 1
   image:

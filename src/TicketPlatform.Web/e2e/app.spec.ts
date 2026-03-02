@@ -10,7 +10,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const API = 'http://localhost:8080';
+const API = process.env.E2E_API_URL ?? 'http://localhost:8080';
 const VENUE_ID = 'a0000000-0000-0000-0000-000000000001';
 
 // Fixed test users (pre-seeded in DB before test run)

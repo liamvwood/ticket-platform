@@ -95,7 +95,7 @@ jobs:
           Payment__Provider: Mock
           Otp__Provider: Mock
           Jwt__Secret: ci-test-secret-at-least-32-characters-long
-        run: dotnet run &
+        run: nohup dotnet run -c Release --no-build > /tmp/api.log 2>&1 &
 
       - name: Wait for API
         run: |
@@ -118,7 +118,9 @@ jobs:
       # ── Start frontend dev server ────────────────────────────
       - name: Start frontend dev server
         working-directory: src/TicketPlatform.Web
-        run: npm run dev &
+        env:
+          VITE_API_URL: http://localhost:8080
+        run: nohup npm run dev > /tmp/frontend.log 2>&1 &
 
       - name: Wait for frontend
         run: |
@@ -127,6 +129,11 @@ jobs:
             echo "Waiting for frontend... ($i/20)"
             sleep 2
           done
+
+      # ── Verify API still alive before E2E ───────────────────
+      - name: Verify API alive
+        run: |
+          curl -sf http://localhost:8080/healthz || (echo "API died — last log:"; tail -50 /tmp/api.log; exit 1)
 
       # ── Playwright E2E tests ─────────────────────────────────
       - name: Install Playwright browsers
@@ -200,6 +207,15 @@ jobs:
             --name ${{ secrets.EKS_CLUSTER_NAME }} \
             --region ${{ env.AWS_REGION }}
 
+      # ── Run DB migrations against live DB ───────────────────
+      - name: Run DB migrations
+        env:
+          ConnectionStrings__DefaultConnection: ${{ secrets.TEST_DB_CONNECTION_STRING }}
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.* 2>/dev/null || true
+          cd src/TicketPlatform.Api
+          dotnet ef database update --project ../TicketPlatform.Infrastructure --no-build
+
       # ── Deploy via Helm ──────────────────────────────────────
       - name: Helm upgrade (test ring)
         run: |
@@ -236,3 +252,57 @@ jobs:
           curl -sf https://${{ secrets.TEST_FRONTEND_HOST }} | grep -q "Austin Tickets\|ticket" \
             && echo "✅ Frontend reachable" \
             || (echo "❌ Frontend check failed" && exit 1)
+
+  # ─────────────────────────────────────────────────────────────
+  # 3. E2E TESTS AGAINST LIVE EKS ENDPOINTS
+  # ─────────────────────────────────────────────────────────────
+  e2e-eks:
+    name: E2E – Test Ring
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/TicketPlatform.Web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/TicketPlatform.Web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: src/TicketPlatform.Web
+        run: npx playwright install chromium --with-deps
+
+      # Seed test users via live API
+      - name: Seed E2E users on EKS
+        run: |
+          API=https://${{ secrets.TEST_API_HOST }}
+          # Seed test venue (idempotent)
+          curl -sf -X POST $API/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"email":"e2ebuyer@austintickets.dev","password":"Password123!","role":"User"}' || true
+          curl -sf -X POST $API/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"email":"venue@austintickets.dev","password":"Password123!","role":"VenueAdmin"}' || true
+
+      - name: Run E2E tests against EKS
+        working-directory: src/TicketPlatform.Web
+        env:
+          E2E_API_URL: https://${{ secrets.TEST_API_HOST }}
+          E2E_BASE_URL: https://${{ secrets.TEST_FRONTEND_HOST }}
+        run: npx playwright test
+
+      - name: Upload EKS E2E report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eks-playwright-report
+          path: src/TicketPlatform.Web/e2e-report/
+          retention-days: 7
