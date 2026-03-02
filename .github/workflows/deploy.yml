@@ -95,15 +95,21 @@ jobs:
           Payment__Provider: Mock
           Otp__Provider: Mock
           Jwt__Secret: ci-test-secret-at-least-32-characters-long
-        run: nohup dotnet run -c Release > /tmp/api.log 2>&1 &
+        run: |
+          # Run compiled DLL directly to bypass launchSettings.json port override (5256 → 8080)
+          DLL=$(find bin/Release -name "TicketPlatform.Api.dll" | head -1)
+          nohup dotnet "$DLL" > /tmp/api.log 2>&1 &
 
       - name: Wait for API
         run: |
           for i in $(seq 1 45); do
-            curl -sf http://localhost:8080/healthz && echo "API ready" && break
+            if curl -sf http://localhost:8080/healthz; then echo "API ready"; exit 0; fi
             echo "Waiting for API... ($i/45)"
             sleep 2
           done
+          echo "=== API failed to start — full log: ==="
+          cat /tmp/api.log
+          exit 1
 
       # ── Seed E2E users ───────────────────────────────────────
       - name: Seed E2E users
