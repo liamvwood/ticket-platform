@@ -17,13 +17,17 @@ public class AuthController(
     TokenService tokenService,
     IOtpSender otpSender,
     IEnumerable<IOAuthProvider> oauthProviders,
-    IConfiguration config) : ControllerBase
+    IConfiguration config,
+    AppMetrics metrics) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest req)
     {
         if (await db.Users.AnyAsync(u => u.Email == req.Email))
+        {
+            metrics.AuthTotal.WithLabels("register", "conflict").Inc();
             return Conflict("Email already registered.");
+        }
 
         // Block registration if a VenueAdmin invite is pending for this email.
         // The recipient must accept the invite to get their account and VenueAdmin role.
@@ -48,6 +52,7 @@ public class AuthController(
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
+        metrics.AuthTotal.WithLabels("register", "success").Inc();
         return Ok(new AuthResponse(tokenService.GenerateToken(user), user.Email, user.Role));
     }
 
@@ -56,8 +61,12 @@ public class AuthController(
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == req.Email.ToLowerInvariant());
         if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
+        {
+            metrics.AuthTotal.WithLabels("login", "failure").Inc();
             return Unauthorized("Invalid credentials.");
+        }
 
+        metrics.AuthTotal.WithLabels("login", "success").Inc();
         return Ok(new AuthResponse(tokenService.GenerateToken(user), user.Email, user.Role));
     }
 
@@ -73,7 +82,10 @@ public class AuthController(
         var recentCount = await db.PhoneVerifications
             .CountAsync(v => v.PhoneNumber == phone && v.CreatedAt > DateTimeOffset.UtcNow.AddMinutes(-10));
         if (recentCount >= 3)
+        {
+            metrics.OtpRequestsTotal.Inc();
             return StatusCode(429, new { error = "Too many OTP requests. Please wait before trying again." });
+        }
 
         var code = Random.Shared.Next(100000, 999999).ToString();
         var verification = new PhoneVerification
@@ -86,6 +98,7 @@ public class AuthController(
         db.PhoneVerifications.Add(verification);
         await db.SaveChangesAsync();
 
+        metrics.OtpRequestsTotal.Inc();
         await otpSender.SendAsync(phone, code);
 
         // In mock mode, surface the code so tests/dev can proceed without SMS
@@ -109,19 +122,24 @@ public class AuthController(
             .FirstOrDefaultAsync();
 
         if (verification is null)
+        {
+            metrics.OtpVerificationsTotal.WithLabels("expired").Inc();
             return Unauthorized("No valid code found. Request a new one.");
+        }
 
         verification.Attempts++;
         if (verification.Attempts > 5)
         {
             verification.Used = true;
             await db.SaveChangesAsync();
+            metrics.OtpVerificationsTotal.WithLabels("too_many_attempts").Inc();
             return Unauthorized("Too many failed attempts. Request a new code.");
         }
 
         if (verification.Code != req.Code)
         {
             await db.SaveChangesAsync();
+            metrics.OtpVerificationsTotal.WithLabels("wrong_code").Inc();
             return Unauthorized("Incorrect code.");
         }
 
@@ -155,6 +173,8 @@ public class AuthController(
             await db.SaveChangesAsync();
         }
 
+        metrics.OtpVerificationsTotal.WithLabels("success").Inc();
+        metrics.AuthTotal.WithLabels("otp", "success").Inc();
         return Ok(new AuthResponse(tokenService.GenerateToken(user), user.Email, user.Role));
     }
 
@@ -225,6 +245,7 @@ public class AuthController(
         {
             return Conflict(new { error = "This email has a pending venue invite. Please use your invite link to create your account.", invitePending = true });
         }
+        metrics.AuthTotal.WithLabels("oauth", "success").Inc();
         return Ok(new AuthResponse(tokenService.GenerateToken(user), user.Email, user.Role));
     }
 

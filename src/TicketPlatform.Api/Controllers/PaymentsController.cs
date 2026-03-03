@@ -10,7 +10,7 @@ namespace TicketPlatform.Api.Controllers;
 
 [ApiController]
 [Route("payments")]
-public class PaymentsController(AppDbContext db, IConfiguration config, QrTokenService qrTokenService, IPaymentProvider paymentProvider) : ControllerBase
+public class PaymentsController(AppDbContext db, IConfiguration config, QrTokenService qrTokenService, IPaymentProvider paymentProvider, AppMetrics metrics) : ControllerBase
 {
     // POST /payments/orders/{orderId}/checkout — create PaymentIntent via configured provider
     [HttpPost("orders/{orderId:guid}/checkout")]
@@ -110,6 +110,7 @@ public class PaymentsController(AppDbContext db, IConfiguration config, QrTokenS
         });
 
         await db.SaveChangesAsync();
+        metrics.PaymentsTotal.WithLabels("confirmed").Inc();
     }
 
     private async Task ReleaseOrder(string paymentIntentId)
@@ -135,5 +136,6 @@ public class PaymentsController(AppDbContext db, IConfiguration config, QrTokenS
         if (ticketType is not null) ticketType.QuantitySold -= order.Tickets.Count;
 
         await db.SaveChangesAsync();
+        metrics.PaymentsTotal.WithLabels("failed").Inc();
     }
 }

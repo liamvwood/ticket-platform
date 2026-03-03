@@ -1,7 +1,7 @@
 namespace TicketPlatform.Api.Services;
 
 /// <summary>Sends OTP codes via Twilio SMS for production use.</summary>
-public class TwilioOtpSender(IConfiguration config) : IOtpSender
+public class TwilioOtpSender(IConfiguration config, IHttpClientFactory httpFactory, AppMetrics metrics) : IOtpSender
 {
     public async Task SendAsync(string phoneNumber, string code)
     {
@@ -12,7 +12,7 @@ public class TwilioOtpSender(IConfiguration config) : IOtpSender
         var credentials = Convert.ToBase64String(
             System.Text.Encoding.UTF8.GetBytes($"{accountSid}:{authToken}"));
 
-        using var http = new HttpClient();
+        using var http = httpFactory.CreateClient();
         http.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", credentials);
 
@@ -23,9 +23,22 @@ public class TwilioOtpSender(IConfiguration config) : IOtpSender
             ["Body"] = $"Your Austin Tickets code: {code}. Valid for 5 minutes."
         });
 
-        var res = await http.PostAsync(
-            $"https://api.twilio.com/2010-04-01/Accounts/{accountSid}/Messages.json", body);
-
-        res.EnsureSuccessStatusCode();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var res = await http.PostAsync(
+                $"https://api.twilio.com/2010-04-01/Accounts/{accountSid}/Messages.json", body);
+            res.EnsureSuccessStatusCode();
+            metrics.OutboundRequestsTotal.WithLabels("twilio", "success").Inc();
+        }
+        catch
+        {
+            metrics.OutboundRequestsTotal.WithLabels("twilio", "failure").Inc();
+            throw;
+        }
+        finally
+        {
+            metrics.OutboundRequestDuration.WithLabels("twilio").Observe(sw.Elapsed.TotalSeconds);
+        }
     }
 }

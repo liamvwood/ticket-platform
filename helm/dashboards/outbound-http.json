@@ -1,0 +1,65 @@
+{
+  "title": "TicketPlatform – Outbound HTTP",
+  "uid": "tp-outbound",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["ticketplatform"],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Outbound Request Rate by Service",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(ticketplatform_outbound_requests_total{outcome=\"success\"}[2m])",
+          "legendFormat": "{{service}} success/s"
+        },
+        {
+          "expr": "rate(ticketplatform_outbound_requests_total{outcome=\"failure\"}[2m])",
+          "legendFormat": "{{service}} failure/s"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Outbound Latency (p95) by Service",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ticketplatform_outbound_request_duration_seconds_bucket[2m])) by (le, service))",
+          "legendFormat": "p95 {{service}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Outbound Errors (last 5m)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(increase(ticketplatform_outbound_requests_total{outcome=\"failure\"}[5m]))",
+          "legendFormat": "Failures"
+        }
+      ],
+      "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }, "color": { "mode": "thresholds" } } }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Outbound Success (last 5m)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(increase(ticketplatform_outbound_requests_total{outcome=\"success\"}[5m]))",
+          "legendFormat": "Successes"
+        }
+      ]
+    }
+  ]
+}

@@ -13,7 +13,7 @@ namespace TicketPlatform.Api.Controllers;
 [ApiController]
 [Route("orders")]
 [Authorize]
-public class OrdersController(AppDbContext db) : ControllerBase
+public class OrdersController(AppDbContext db, AppMetrics metrics) : ControllerBase
 {
     // POST /orders — create pending order and lock tickets
     [HttpPost]
@@ -45,7 +45,10 @@ public class OrdersController(AppDbContext db) : ControllerBase
                 .ToListAsync();
 
             if (availableTickets.Count < req.Quantity)
+            {
+                metrics.OrdersCreatedTotal.WithLabels("conflict").Inc();
                 return Conflict("Not enough tickets available.");
+            }
 
             var order = new Order
             {
@@ -69,6 +72,9 @@ public class OrdersController(AppDbContext db) : ControllerBase
             ticketType.QuantitySold += req.Quantity;
             await db.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            metrics.OrdersCreatedTotal.WithLabels("created").Inc();
+            metrics.TicketsReservedTotal.Inc(req.Quantity);
 
             return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
         }

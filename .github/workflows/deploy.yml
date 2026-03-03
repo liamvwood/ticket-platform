@@ -284,6 +284,10 @@ jobs:
             --timeout 5m \
             --wait
 
+      # ── Apply Grafana dashboards ──────────────────────────────
+      - name: Apply Grafana dashboards
+        run: bash scripts/apply-grafana-dashboards.sh
+
       # ── Smoke test the live HTTPS endpoint ───────────────────
       - name: Smoke test – API health
         run: |

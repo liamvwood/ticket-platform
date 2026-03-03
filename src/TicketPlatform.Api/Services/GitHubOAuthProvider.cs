@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace TicketPlatform.Api.Services;
 
-public class GitHubOAuthProvider(IConfiguration config, IHttpClientFactory http) : IOAuthProvider
+public class GitHubOAuthProvider(IConfiguration config, IHttpClientFactory http, AppMetrics metrics) : IOAuthProvider
 {
     public string ProviderName => "GitHub";
 
@@ -22,36 +22,49 @@ public class GitHubOAuthProvider(IConfiguration config, IHttpClientFactory http)
         using var client = http.CreateClient();
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        var tokenRes = await client.PostAsync("https://github.com/login/oauth/access_token",
-            new FormUrlEncodedContent(new Dictionary<string, string>
-            {
-                ["code"] = code,
-                ["client_id"] = config["OAuth:GitHub:ClientId"]!,
-                ["client_secret"] = config["OAuth:GitHub:ClientSecret"]!,
-                ["redirect_uri"] = redirectUri,
-            }));
-        tokenRes.EnsureSuccessStatusCode();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var tokenRes = await client.PostAsync("https://github.com/login/oauth/access_token",
+                new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["code"] = code,
+                    ["client_id"] = config["OAuth:GitHub:ClientId"]!,
+                    ["client_secret"] = config["OAuth:GitHub:ClientSecret"]!,
+                    ["redirect_uri"] = redirectUri,
+                }));
+            tokenRes.EnsureSuccessStatusCode();
 
-        var tokenDoc = JsonDocument.Parse(await tokenRes.Content.ReadAsStringAsync());
-        var accessToken = tokenDoc.RootElement.GetProperty("access_token").GetString()!;
+            var tokenDoc = JsonDocument.Parse(await tokenRes.Content.ReadAsStringAsync());
+            var accessToken = tokenDoc.RootElement.GetProperty("access_token").GetString()!;
 
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("AustinTickets/1.0");
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("AustinTickets/1.0");
 
-        var userRes = await client.GetAsync("https://api.github.com/user");
-        userRes.EnsureSuccessStatusCode();
-        var user = JsonDocument.Parse(await userRes.Content.ReadAsStringAsync()).RootElement;
+            var userRes = await client.GetAsync("https://api.github.com/user");
+            userRes.EnsureSuccessStatusCode();
+            var user = JsonDocument.Parse(await userRes.Content.ReadAsStringAsync()).RootElement;
 
-        // GitHub may not expose email publicly — fetch primary verified email
-        var email = user.TryGetProperty("email", out var e) && e.ValueKind != JsonValueKind.Null
-            ? e.GetString()!
-            : await GetPrimaryEmailAsync(client);
+            var email = user.TryGetProperty("email", out var e) && e.ValueKind != JsonValueKind.Null
+                ? e.GetString()!
+                : await GetPrimaryEmailAsync(client);
 
-        return new OAuthUserInfo(
-            Id: user.GetProperty("id").GetInt64().ToString(),
-            Email: email ?? $"github_{user.GetProperty("id").GetInt64()}@noemail.local",
-            Name: user.TryGetProperty("name", out var n) && n.ValueKind != JsonValueKind.Null ? n.GetString() : null,
-            Provider: ProviderName);
+            metrics.OutboundRequestsTotal.WithLabels("github_oauth", "success").Inc();
+            return new OAuthUserInfo(
+                Id: user.GetProperty("id").GetInt64().ToString(),
+                Email: email ?? $"github_{user.GetProperty("id").GetInt64()}@noemail.local",
+                Name: user.TryGetProperty("name", out var n) && n.ValueKind != JsonValueKind.Null ? n.GetString() : null,
+                Provider: ProviderName);
+        }
+        catch
+        {
+            metrics.OutboundRequestsTotal.WithLabels("github_oauth", "failure").Inc();
+            throw;
+        }
+        finally
+        {
+            metrics.OutboundRequestDuration.WithLabels("github_oauth").Observe(sw.Elapsed.TotalSeconds);
+        }
     }
 
     private static async Task<string?> GetPrimaryEmailAsync(HttpClient client)

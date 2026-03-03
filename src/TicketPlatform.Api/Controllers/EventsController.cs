@@ -10,7 +10,7 @@ namespace TicketPlatform.Api.Controllers;
 
 [ApiController]
 [Route("events")]
-public class EventsController(AppDbContext db) : ControllerBase
+public class EventsController(AppDbContext db, AppMetrics metrics) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<Event>>> GetAll()
@@ -67,6 +67,7 @@ public class EventsController(AppDbContext db) : ControllerBase
 
         db.Events.Add(ev);
         await db.SaveChangesAsync();
+        metrics.EventsCreatedTotal.Inc();
         return CreatedAtAction(nameof(GetById), new { id = ev.Id }, ev);
     }
 
@@ -78,6 +79,7 @@ public class EventsController(AppDbContext db) : ControllerBase
         if (ev is null) return NotFound();
         ev.IsPublished = true;
         await db.SaveChangesAsync();
+        metrics.EventsPublishedTotal.Inc();
         return NoContent();
     }
 

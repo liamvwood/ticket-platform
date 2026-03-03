@@ -1,0 +1,109 @@
+{
+  "title": "TicketPlatform – Business Metrics",
+  "uid": "tp-business",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["ticketplatform"],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Orders Created (1h)",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum(increase(ticketplatform_orders_created_total{status=\"created\"}[1h]))", "legendFormat": "Orders" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Tickets Reserved (1h)",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "targets": [
+        { "expr": "sum(increase(ticketplatform_tickets_reserved_total[1h]))", "legendFormat": "Tickets" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Payments Confirmed (1h)",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "targets": [
+        { "expr": "sum(increase(ticketplatform_payments_total{outcome=\"confirmed\"}[1h]))", "legendFormat": "Payments" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "OTP Requests (1h)",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "sum(increase(ticketplatform_otp_requests_total[1h]))", "legendFormat": "OTP" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "OTP Success Rate",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(increase(ticketplatform_otp_verifications_total{outcome=\"success\"}[1h])) / sum(increase(ticketplatform_otp_verifications_total[1h])) * 100",
+          "legendFormat": "Success %"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 70 }, { "color": "green", "value": 90 }] }, "color": { "mode": "thresholds" } } }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "User Registrations (1h)",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "targets": [
+        { "expr": "sum(increase(ticketplatform_auth_total{method=\"register\",outcome=\"success\"}[1h]))", "legendFormat": "Registrations" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Order & Payment Volume",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        { "expr": "rate(ticketplatform_orders_created_total{status=\"created\"}[5m])", "legendFormat": "Orders/s" },
+        { "expr": "rate(ticketplatform_payments_total{outcome=\"confirmed\"}[5m])", "legendFormat": "Payments/s" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ops" } }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Auth Activity",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        { "expr": "rate(ticketplatform_auth_total{outcome=\"success\"}[5m])", "legendFormat": "{{method}} success/s" },
+        { "expr": "rate(ticketplatform_auth_total{outcome=\"failure\"}[5m])", "legendFormat": "{{method}} failure/s" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ops" } }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Events Created & Published",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        { "expr": "increase(ticketplatform_events_created_total[5m])", "legendFormat": "Created" },
+        { "expr": "increase(ticketplatform_events_published_total[5m])", "legendFormat": "Published" }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Payment Outcomes",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        { "expr": "rate(ticketplatform_payments_total[5m])", "legendFormat": "{{outcome}}" }
+      ]
+    }
+  ]
+}

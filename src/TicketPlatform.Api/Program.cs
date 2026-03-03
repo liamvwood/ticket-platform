@@ -44,6 +44,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<QrTokenService>();
+builder.Services.AddSingleton<AppMetrics>();
 
 var paymentProvider = builder.Configuration["Payment:Provider"];
 if (string.Equals(paymentProvider, "Mock", StringComparison.OrdinalIgnoreCase))
