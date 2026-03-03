@@ -468,8 +468,7 @@ test.describe('Event slugs', () => {
     const events = listRes.json() as any[];
     if (events.length === 0) return;
     const ev = events[0];
-    const apiBase = 'http://localhost:8080';
-    const r = await fetch(`${apiBase}/og/events/${ev.id}`);
+    const r = await fetch(`${API}/og/events/${ev.id}`);
     expect(r.status).toBe(200);
     const html = await r.text();
     expect(html).toContain('og:title');
@@ -481,8 +480,7 @@ test.describe('Event slugs', () => {
     const events = listRes.json() as any[];
     if (events.length === 0) return;
     const ev = events[0];
-    const apiBase = 'http://localhost:8080';
-    const r = await fetch(`${apiBase}/og/events/${ev.id}/image`);
+    const r = await fetch(`${API}/og/events/${ev.id}/image`);
     expect(r.status).toBe(200);
     expect(r.headers.get('content-type')).toContain('image/svg+xml');
     const svg = await r.text();
@@ -513,9 +511,19 @@ test.describe('Platform fee', () => {
 
   test.beforeAll(async () => {
     userToken = await getToken(USER_EMAIL, USER_PASS);
-    const events = (await apiGet('/events')).json() as any[];
-    const liveEvent = events.find((e: any) => e.ticketTypes?.length > 0);
-    if (liveEvent) ticketTypeId = liveEvent.ticketTypes[0].id;
+    const venueToken = await getToken(VENUE_EMAIL, VENUE_PASS);
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+    const dayAfter = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const saleStart = new Date(Date.now() - 3600_000).toISOString();
+    const evRes = await apiPost(
+      '/events',
+      { venueId: VENUE_ID, name: `Fee Test ${RUN}`, description: 'platform fee e2e', startsAt: tomorrow, endsAt: dayAfter, saleStartsAt: saleStart },
+      venueToken
+    );
+    const eventId = evRes.json().id;
+    const ttRes = await apiPost(`/events/${eventId}/ticket-types`, { name: 'GA', price: 10, totalQuantity: 100, maxPerOrder: 10 }, venueToken);
+    ticketTypeId = ttRes.json().id;
+    await apiPut(`/events/${eventId}/publish`, venueToken);
   });
 
   test('order with zero platform fee is accepted', async () => {
@@ -548,9 +556,19 @@ test.describe('Guest OTP checkout', () => {
   let ticketTypeId: string;
 
   test.beforeAll(async () => {
-    const events = (await apiGet('/events')).json() as any[];
-    const liveEvent = events.find((e: any) => e.ticketTypes?.length > 0);
-    if (liveEvent) ticketTypeId = liveEvent.ticketTypes[0].id;
+    const venueToken = await getToken(VENUE_EMAIL, VENUE_PASS);
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+    const dayAfter = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const saleStart = new Date(Date.now() - 3600_000).toISOString();
+    const evRes = await apiPost(
+      '/events',
+      { venueId: VENUE_ID, name: `Guest Test ${RUN}`, description: 'guest checkout e2e', startsAt: tomorrow, endsAt: dayAfter, saleStartsAt: saleStart },
+      venueToken
+    );
+    const eventId = evRes.json().id;
+    const ttRes = await apiPost(`/events/${eventId}/ticket-types`, { name: 'GA', price: 5, totalQuantity: 100, maxPerOrder: 10 }, venueToken);
+    ticketTypeId = ttRes.json().id;
+    await apiPut(`/events/${eventId}/publish`, venueToken);
   });
 
   test('request-otp returns devCode in mock mode', async () => {
