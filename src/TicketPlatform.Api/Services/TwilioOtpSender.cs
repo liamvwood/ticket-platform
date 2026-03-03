@@ -20,7 +20,7 @@ public class TwilioOtpSender(IConfiguration config, IHttpClientFactory httpFacto
         {
             ["To"] = phoneNumber,
             ["From"] = fromNumber,
-            ["Body"] = $"Your Austin Tickets code: {code}. Valid for 5 minutes."
+            ["Body"] = $"Your Slingshot code: {code}. Valid for 5 minutes."
         });
 
         var sw = System.Diagnostics.Stopwatch.StartNew();

@@ -22,4 +22,4 @@ enable_monitoring         = true
 ecr_image_retention_count = 20
 
 thumbnail_bucket_cors_origin = "*"
-letsencrypt_email            = "ops@austintickets.dev"
+letsencrypt_email            = "ops@slingshot.dev"

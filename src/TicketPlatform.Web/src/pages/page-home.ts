@@ -150,9 +150,9 @@ export class PageHome extends LitElement {
   render() {
     return html`
       <div class="hero">
-        <div class="eyebrow">Austin's Local Ticket Platform</div>
+        <div class="eyebrow">Your Ticket Platform</div>
         <h1>Tickets that don't<br><span class="accent">crash or scalp you</span></h1>
-        <p class="sub">Buy tickets for Austin's best live music, comedy, and events — with transparent fees and zero bots.</p>
+        <p class="sub">Buy tickets for live music, comedy, and events — with transparent fees and zero bots.</p>
         <div class="cta-row">
           <button class="btn-primary" @click=${() => navigate('/events')}>Browse Events</button>
           <button class="btn-ghost" @click=${() => navigate('/register')}>Create Account</button>
@@ -161,7 +161,7 @@ export class PageHome extends LitElement {
           <div class="stat"><div class="stat-val">~3%</div><div class="stat-label">Service Fee</div></div>
           <div class="stat"><div class="stat-val">0</div><div class="stat-label">Crashes at Drop</div></div>
           <div class="stat"><div class="stat-val">Live</div><div class="stat-label">QR Validation</div></div>
-          <div class="stat"><div class="stat-val">ATX</div><div class="stat-label">Local First</div></div>
+          <div class="stat"><div class="stat-val">🚀</div><div class="stat-label">Slingshot</div></div>
         </div>
       </div>
 
@@ -216,7 +216,7 @@ export class PageHome extends LitElement {
             <div class="fee-divider"></div>
             <div class="fee-item">
               <div class="fee-pct us">~3%</div>
-              <div class="fee-name">Austin Tickets</div>
+              <div class="fee-name">Slingshot</div>
             </div>
           </div>
         </div>

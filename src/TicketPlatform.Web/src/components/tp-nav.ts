@@ -139,7 +139,7 @@ export class TpNav extends LitElement {
       <nav>
         <div class="brand" @click=${() => this._nav('/')}>
           <span .innerHTML=${icons.ticket}></span>
-          Austin Tickets
+          Slingshot
         </div>
         <div class="links">
           <a @click=${() => this._nav('/events')}>Events</a>

@@ -18,7 +18,7 @@ resource "aws_ssm_parameter" "jwt_secret" {
 resource "aws_ssm_parameter" "owner_email" {
   name  = "/ticket-platform/${var.environment}/owner-email"
   type  = "SecureString"
-  value = "owner@austintickets.dev"
+  value = "owner@slingshot.dev"
 
   lifecycle {
     ignore_changes = [value]

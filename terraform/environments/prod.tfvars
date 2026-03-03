@@ -14,12 +14,12 @@ db_allocated_storage = 100
 single_nat_gateway = false
 enable_nat_gateway = true
 
-api_domain      = "api.austintickets.dev"
-frontend_domain = "app.austintickets.dev"
-grafana_domain  = "grafana.austintickets.dev"
+api_domain      = "api.slingshot.dev"
+frontend_domain = "app.slingshot.dev"
+grafana_domain  = "grafana.slingshot.dev"
 
 enable_monitoring         = true
 ecr_image_retention_count = 50
 
-thumbnail_bucket_cors_origin = "https://app.austintickets.dev"
-letsencrypt_email            = "ops@austintickets.dev"
+thumbnail_bucket_cors_origin = "https://app.slingshot.dev"
+letsencrypt_email            = "ops@slingshot.dev"

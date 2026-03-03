@@ -64,12 +64,12 @@ variable "enable_nat_gateway" {
 }
 
 variable "api_domain" {
-  description = "Public hostname for the API (e.g. api.austintickets.dev)"
+  description = "Public hostname for the API (e.g. api.slingshot.dev)"
   type        = string
 }
 
 variable "frontend_domain" {
-  description = "Public hostname for the frontend (e.g. app.austintickets.dev)"
+  description = "Public hostname for the frontend (e.g. app.slingshot.dev)"
   type        = string
 }
 
@@ -100,5 +100,5 @@ variable "thumbnail_bucket_cors_origin" {
 variable "letsencrypt_email" {
   description = "Email address for Let's Encrypt certificate notifications"
   type        = string
-  default     = "ops@austintickets.dev"
+  default     = "ops@slingshot.dev"
 }

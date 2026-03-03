@@ -39,7 +39,7 @@ public class GitHubOAuthProvider(IConfiguration config, IHttpClientFactory http,
             var accessToken = tokenDoc.RootElement.GetProperty("access_token").GetString()!;
 
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("AustinTickets/1.0");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Slingshot/1.0");
 
             var userRes = await client.GetAsync("https://api.github.com/user");
             userRes.EnsureSuccessStatusCode();

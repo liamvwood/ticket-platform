@@ -170,7 +170,7 @@ export class PageEventDetail extends LitElement {
       this.event?.ticketTypes?.forEach((tt: any) => { q[tt.id] = 1; });
       this.quantities = q;
       // Update page title + meta for bots that execute JS
-      document.title = `${this.event.name} — Austin Tickets`;
+      document.title = `${this.event.name} — Slingshot`;
     } catch (e: any) {
       this.error = e.message;
     } finally {
@@ -334,7 +334,7 @@ export class PageEventDetail extends LitElement {
 
       <!-- Platform fee contribution selector -->
       <div class="fee-section">
-        <h4>Help keep Austin Tickets free</h4>
+        <h4>Help keep Slingshot free</h4>
         <p>We charge zero fees by default. Add an optional contribution to keep the lights on.</p>
         <div class="fee-options">
           ${this.feeOptions.map(f => html`

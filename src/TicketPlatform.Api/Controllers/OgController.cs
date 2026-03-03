@@ -26,12 +26,12 @@ public class OgController(AppDbContext db) : ControllerBase
             ev = await db.Events.Include(e => e.Venue).FirstOrDefaultAsync(e => e.Slug == id);
 
         if (ev is null)
-            return Content(MinimalHtml("Austin Tickets", "Find live events in Austin, TX.", null), "text/html");
+            return Content(MinimalHtml("Slingshot", "Find live events in Austin, TX.", null), "text/html");
 
-        var title = $"{ev.Name} — Austin Tickets";
+        var title = $"{ev.Name} — Slingshot";
         var desc = $"{ev.StartsAt:ddd, MMM d 'at' h:mm tt} @ {ev.Venue.Name}. {ev.Description}".Truncate(200);
         var imageUrl = $"{Request.Scheme}://{Request.Host}/og/events/{ev.Id}/image";
-        var eventUrl = $"https://austintickets.dev/events/{ev.Slug}";
+        var eventUrl = $"https://slingshot.dev/events/{ev.Slug}";
 
         return Content(MinimalHtml(title, desc, imageUrl, eventUrl), "text/html");
     }
@@ -48,7 +48,7 @@ public class OgController(AppDbContext db) : ControllerBase
         else
             ev = await db.Events.Include(e => e.Venue).FirstOrDefaultAsync(e => e.Slug == id);
 
-        var name = ev?.Name ?? "Austin Tickets";
+        var name = ev?.Name ?? "Slingshot";
         var venue = ev?.Venue?.Name ?? "Austin, TX";
         var date = ev is not null ? ev.StartsAt.ToString("ddd MMM d, yyyy") : string.Empty;
 
@@ -68,7 +68,7 @@ public class OgController(AppDbContext db) : ControllerBase
               <rect width="1200" height="630" fill="url(#bg)"/>
               <rect x="0" y="0" width="1200" height="630" fill="rgba(0,0,0,0.35)"/>
               <!-- Brand -->
-              <text x="60" y="80" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.6)">🎟 AUSTIN TICKETS</text>
+              <text x="60" y="80" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.6)">🎟 SLINGSHOT</text>
               <!-- Event name -->
               <text x="60" y="320" font-family="Inter,Arial,sans-serif" font-size="72" font-weight="900" fill="#ffffff" style="letter-spacing:-2px">{Escape(name.Truncate(36))}</text>
               <!-- Date + Venue -->
@@ -102,7 +102,7 @@ public class OgController(AppDbContext db) : ControllerBase
               <meta charset="utf-8"/>
               <title>{title}</title>
               <meta property="og:type" content="website"/>
-              <meta property="og:site_name" content="Austin Tickets"/>
+              <meta property="og:site_name" content="Slingshot"/>
               <meta property="og:title" content="{title}"/>
               <meta property="og:description" content="{description}"/>
               {(url is not null ? $"""<meta property="og:url" content="{url}"/>""" : "")}

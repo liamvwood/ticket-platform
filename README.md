@@ -1,8 +1,8 @@
-# 🎟 Austin Tickets
+# 🎟 Slingshot
 
-> Austin's local ticketing platform — zero fees, no crashes, no bots.
+> A modern ticketing platform — zero fees, no crashes, no bots.
 
-A full-stack ticketing platform built for Austin, TX venues. Competes with Ticketmaster and StubHub on fees, reliability, and experience. Built with AI-assisted development using GitHub Copilot CLI.
+A full-stack ticketing platform built for live music, comedy, and events venues. Competes with Ticketmaster and StubHub on fees, reliability, and experience. Built with AI-assisted development using GitHub Copilot CLI.
 
 ---
 
@@ -167,7 +167,7 @@ Configured via `Otp:Provider`:
 
 1. **Slug URLs** — every event gets a readable URL on creation (e.g. `/events/black-pumas-stubbs-a1b2c3d4`)
 2. **Share button** — `navigator.share()` on mobile; clipboard copy + toast on desktop
-3. **Pre-filled share text** — `🎟 Event Name — Date @ Venue | austintickets.dev/events/slug`
+3. **Pre-filled share text** — `🎟 Event Name — Date @ Venue | slingshot.dev/events/slug`
 4. **OG previews** — `GET /og/events/{id}` serves full OG + Twitter Card meta; rich cards in Slack, iMessage, Discord
 5. **Dynamic OG image** — deterministic gradient SVG per event (no external image service)
 6. **Referral links** — `?ref={code}` appended to share URLs; code stored on the resulting order
@@ -461,5 +461,5 @@ ticket-platform/
 | **Drop-ready reliability** | Row-level locking, stateless API, horizontal scaling |
 | **Zero fees by default** | Direct venue-to-fan revenue; voluntary contribution model |
 | **No bots / anti-scalping** | Per-order limits, phone-bound identity, rotating QR tokens |
-| **Austin-first** | Local branding, direct venue relationships, community focus |
+| **Community-first** | Direct venue relationships, no middleman |
 | **AI-accelerated** | Built with GitHub Copilot CLI + screenshot feedback loops |

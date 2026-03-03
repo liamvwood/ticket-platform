@@ -14,11 +14,11 @@ const API = process.env.E2E_API_URL ?? 'http://localhost:8080';
 const VENUE_ID = 'a0000000-0000-0000-0000-000000000001';
 
 // Fixed test users (pre-seeded in DB before test run)
-const USER_EMAIL = 'e2ebuyer@austintickets.dev';
+const USER_EMAIL = 'e2ebuyer@slingshot.dev';
 const USER_PASS = 'Password123!';
-const VENUE_EMAIL = 'venue@austintickets.dev';
+const VENUE_EMAIL = 'venue@slingshot.dev';
 const VENUE_PASS = 'Password123!';
-const OWNER_EMAIL = 'owner@austintickets.dev';
+const OWNER_EMAIL = 'owner@slingshot.dev';
 const OWNER_PASS = 'ChangeMe123!';
 
 // Unique suffix for data created during this run
@@ -91,7 +91,7 @@ test.describe('Home page', () => {
 test.describe('Authentication', () => {
   test('register new user', async ({ page }) => {
     // Use a unique email each run so this test can run repeatedly
-    const newEmail = `newuser${RUN}@austintickets.dev`;
+    const newEmail = `newuser${RUN}@slingshot.dev`;
     await page.goto('/register');
     await expect(page.locator('h1')).toContainText('Create account');
     await page.fill('input[type="email"]', newEmail);

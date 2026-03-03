@@ -83,7 +83,7 @@ export class TpApp extends LitElement {
     return html`
       <tp-nav></tp-nav>
       <main>${this._resolve()}</main>
-      <footer>© 2025 Austin Tickets · Low fees · Local first · Built in ATX 🤠</footer>
+      <footer>© 2025 Slingshot · Low fees · No bots · Community first</footer>
     `;
   }
 }

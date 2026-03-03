@@ -1,6 +1,6 @@
 # Terraform — Ticket Platform Infrastructure
 
-Defines all AWS infrastructure for Austin Tickets as Terraform code. One command (`terraform apply`) stands up a complete, production-ready environment.
+Defines all AWS infrastructure for Slingshot as Terraform code. One command (`terraform apply`) stands up a complete, production-ready environment.
 
 ## What gets created
 
@@ -120,7 +120,7 @@ aws ssm put-parameter \
 | RDS final snapshot | No | Yes |
 | Performance Insights | No | Yes |
 | ECR image retention | 20 | 50 |
-| CORS origin for thumbnails | `*` | `https://app.austintickets.dev` |
+| CORS origin for thumbnails | `*` | `https://app.slingshot.dev` |
 
 ## Module versions
 

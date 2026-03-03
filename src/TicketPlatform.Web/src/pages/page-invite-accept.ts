@@ -122,7 +122,7 @@ export class PageInviteAccept extends LitElement {
         <div class="logo" .innerHTML=${icons.ticket}></div>
         <h1>You're invited!</h1>
         <p class="venue-name">${this.invite!.venueName}</p>
-        <p class="sub">Set up your venue admin account to start selling tickets on Austin Tickets.</p>
+        <p class="sub">Set up your venue admin account to start selling tickets on Slingshot.</p>
 
         <div class="info">
           You've been invited to manage <strong>${this.invite!.venueName}</strong>.<br>

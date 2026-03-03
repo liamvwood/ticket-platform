@@ -175,7 +175,7 @@ export class PageAuth extends LitElement {
       <div class="box">
         <div class="logo" .innerHTML=${icons.ticket}></div>
         <h1>${isLogin ? 'Welcome back' : 'Create account'}</h1>
-        <p class="sub">${isLogin ? 'Log in to access your tickets.' : 'Join Austin Tickets — no bots allowed.'}</p>
+        <p class="sub">${isLogin ? 'Log in to access your tickets.' : 'Join Slingshot — no bots allowed.'}</p>
         ${this.error ? html`<div class="error">${this.error}</div>` : ''}
         ${this.invitePending ? html`
           <div class="invite-notice">
