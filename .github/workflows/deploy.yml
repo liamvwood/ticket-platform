@@ -344,12 +344,18 @@ jobs:
       - name: Seed E2E users on EKS
         run: |
           API=https://${{ secrets.TEST_API_HOST }}
+          OWNER_EMAIL=$(aws ssm get-parameter \
+            --name /ticket-platform/test/owner-email \
+            --with-decryption --query Parameter.Value --output text)
+          OWNER_PASSWORD=$(aws ssm get-parameter \
+            --name /ticket-platform/test/owner-password \
+            --with-decryption --query Parameter.Value --output text)
 
           # Register buyer (must include phoneNumber — NOT NULL column)
           STATUS=$(curl -s -w "%{http_code}" -o /tmp/reg.json \
             -X POST $API/auth/register \
             -H "Content-Type: application/json" \
-            -d '{"email":"e2ebuyer@slingshot.dev","password":"Password123!","phoneNumber":""}')
+            -d "{\"email\":\"e2ebuyer@slingshot.dev\",\"password\":\"Password123!\",\"phoneNumber\":\"\"}")
           [ "$STATUS" = "200" ] || [ "$STATUS" = "409" ] || \
             { echo "Buyer registration failed ($STATUS): $(cat /tmp/reg.json)"; exit 1; }
           echo "Buyer: $STATUS"
@@ -357,7 +363,7 @@ jobs:
           # Seed VenueAdmin via invite flow
           OWNER_TOKEN=$(curl -sf -X POST $API/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"owner@slingshot.dev","password":"ChangeMe123!"}' | jq -r '.token')
+            -d "{\"email\":\"$OWNER_EMAIL\",\"password\":\"$OWNER_PASSWORD\"}" | jq -r '.token')
           [ -n "$OWNER_TOKEN" ] || { echo "AppOwner login failed on EKS"; exit 1; }
 
           INVITE=$(curl -sf -X POST $API/admin/invites \
