@@ -19,19 +19,22 @@ A full-stack ticketing platform built for Austin, TX venues. Competes with Ticke
 - **Digital Wallet** — fullscreen QR modal with Apple Wallet and Google Calendar CTAs
 
 ### For Venues
-- **Venue portal** — create events, manage ticket types (add / remove), set quantities and per-order limits
+- **Venue portal** — create events, manage ticket types (add / edit / remove), set quantities and per-order limits
 - **Publish/unpublish** — control when events go live
+- **Event thumbnails** — upload a cover image per event, stored in Amazon S3; displayed on the event listing and detail page
 - **QR scanner app** — mobile-friendly camera-based scanner with instant Valid / Duplicate / Invalid / Refunded status
 - **Referral attribution** — see which orders came from word-of-mouth referral links
 
 ### Platform
 - **Event slugs** — human-readable URLs (`/events/black-pumas-stubbs-a1b2c3d4`) instead of UUIDs
+- **Events pagination** — `GET /events?page=1&pageSize=12` returns paged results; events grid is center-justified on every row
 - **Open Graph previews** — rich link previews in Slack, iMessage, Discord, Twitter/X with dynamic SVG images
 - **Referral codes** — every user gets a unique code; `?ref=code` on share links is attributed on orders
 - **Anti-scalping** — per-order ticket limits, identity binding, short-lived rotating QR tokens, rate limiting
 - **Drop-ready** — optimistic concurrency + row-level locking to prevent overselling under load
 - **Reverse proxy** — nginx in front of frontend and API for rate limiting and DDoS mitigation
 - **Observability** — Prometheus metrics exported from the API; four Grafana dashboards (API requests, outbound HTTP, cluster resources, business metrics)
+- **Auto-confirm orders** — in test/dev (`Payment:Provider=Mock`), pending orders auto-confirm after 10 seconds so testers don't need to manually call `/mock-confirm`
 - **Favicon** — purple gradient ticket SVG icon
 
 ---
@@ -74,7 +77,7 @@ A full-stack ticketing platform built for Austin, TX venues. Competes with Ticke
 |--------|-----------|
 | `User` | Email, PhoneNumber, PasswordHash, Role, PhoneVerified, **ReferralCode** |
 | `Venue` | Name, Address, ContactEmail |
-| `Event` | Name, **Slug**, Description, StartsAt, EndsAt, SaleStartsAt, IsPublished |
+| `Event` | Name, **Slug**, Description, StartsAt, EndsAt, SaleStartsAt, IsPublished, **ThumbnailUrl** |
 | `TicketType` | Name, Price, TotalQuantity, MaxPerOrder, QuantitySold |
 | `Ticket` | Status, QrToken, QrTokenExpiresAt, OrderId |
 | `Order` | Status, TotalAmount, **PlatformFee**, **ReferredBy**, StripePaymentIntentId, ExpiresAt |
@@ -98,10 +101,13 @@ A full-stack ticketing platform built for Austin, TX venues. Competes with Ticke
 ### Events
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET`  | `/events` | List published events |
+| `GET`  | `/events` | List published events (paginated: `?page=1&pageSize=12`) |
+| `GET`  | `/events/admin` | All events incl. drafts *(AppOwner only, paginated)* |
 | `GET`  | `/events/{idOrSlug}` | Get event by UUID **or slug** |
 | `POST` | `/events` | Create event *(VenueAdmin)* |
 | `PUT`  | `/events/{id}/publish` | Publish event *(VenueAdmin)* |
+| `PUT`  | `/events/{id}/unpublish` | Unpublish event *(AppOwner / VenueAdmin)* |
+| `POST` | `/events/{id}/thumbnail` | Upload cover image — stored in S3 *(VenueAdmin)* |
 | `POST` | `/events/{id}/ticket-types` | Add ticket type *(VenueAdmin)* |
 | `DELETE` | `/events/{id}/ticket-types/{ttId}` | Remove ticket type *(VenueAdmin)* |
 
@@ -138,7 +144,7 @@ Configured via `Payment:Provider`:
 
 | Value | When to use |
 |-------|------------|
-| `Mock` | Local dev + tests — returns `mock_pi_*` IDs instantly, no Stripe account needed |
+| `Mock` | Local dev + tests — returns `mock_pi_*` IDs instantly, no Stripe account needed; `AutoConfirmOrdersService` background worker auto-confirms `AwaitingPayment` orders after 10 s |
 | `Stripe` | Production — real PaymentIntents via Stripe API |
 
 ### Voluntary Platform Fee
@@ -185,7 +191,7 @@ Configured via `Otp:Provider`:
 
 ## 🧪 Testing
 
-60 Playwright E2E tests covering all major flows:
+68 Playwright E2E tests covering all major flows:
 
 ```bash
 cd src/TicketPlatform.Web
@@ -197,12 +203,14 @@ npm run test:e2e
 | Home page | Hero render, CTAs |
 | Authentication | Register, login, logout, wrong password |
 | Events page | Live events, demo fallback, card navigation |
-| Venue admin flow | Create event, add/remove ticket types, publish |
+| Venue admin flow | Create event, add/edit/remove ticket types, publish, thumbnail upload |
 | Purchase flow | Reserve → checkout → mock-confirm → Paid status |
 | Guest OTP checkout | request-otp devCode, verify-otp → Guest JWT, place order, wrong code |
 | Platform fee | Zero fee, custom fee ($2), fee clamping (>$20 → $20) |
 | My Tickets | Auth guard redirect, order list |
 | Scanner | Auth warning, VenueAdmin UI, token validation |
+| Events pagination | Paged shape (`items`/`page`/`totalPages`), pageSize respected, admin endpoint auth |
+| Event thumbnails | Upload PNG, verify `thumbnailUrl` on GET |
 | Event slugs | Slug present on events, slug lookup, OG HTML, OG SVG image |
 | Referral codes | Code generated on register, referral count endpoint |
 | Navigation | Brand, Events, Login links |
@@ -240,7 +248,7 @@ Every push to `main` triggers the **CI/CD – Test Ring** GitHub Actions workflo
 | **Build & Push images** | Docker builds API + frontend images; pushed to Amazon ECR |
 | **Deploy to Test EKS** | `helm upgrade --install` on the `ticket-platform-test` EKS cluster (us-east-1) |
 | **Smoke tests** | `curl` healthz + homepage reachability check against the live cluster |
-| **E2E on EKS** | Full 60-test Playwright suite against `https://app.100.29.51.191.sslip.io` |
+| **E2E on EKS** | Full 68-test Playwright suite against `https://app.100.29.51.191.sslip.io` |
 
 **Test ring URLs:**
 | Service | URL |
@@ -249,6 +257,33 @@ Every push to `main` triggers the **CI/CD – Test Ring** GitHub Actions workflo
 | API | `https://api.100.29.51.191.sslip.io` |
 | Health | `https://api.100.29.51.191.sslip.io/healthz` |
 | Grafana | `https://grafana.100.29.51.191.sslip.io` |
+
+---
+
+## 🌍 Infrastructure as Code (Terraform)
+
+All AWS resources are defined in `terraform/`. A single `terraform apply` provisions a complete, isolated environment.
+
+| File | Resources |
+|------|-----------|
+| `vpc.tf` | VPC, public/private subnets, NAT Gateway, Internet Gateway |
+| `eks.tf` | EKS cluster + managed node group (t3.medium) + OIDC provider |
+| `ecr.tf` | ECR repositories for `ticket-platform-api` and `ticket-platform-frontend` |
+| `rds.tf` | RDS PostgreSQL 16 (private subnet, encrypted at rest, 7-day backups) |
+| `s3.tf` | S3 thumbnail bucket (CORS enabled, server-side encryption) |
+| `iam.tf` | CI IAM user (ECR/EKS), IRSA role for API pod (S3 + SSM read) |
+| `ssm.tf` | Parameter Store secrets: JWT key, DB URL, Stripe keys, owner credentials |
+| `k8s-addons.tf` | Helm releases: nginx ingress, cert-manager, kube-prometheus-stack |
+
+```bash
+# Bootstrap S3 state backend (one-time)
+bash terraform/scripts/bootstrap-state.sh
+
+# Deploy test environment
+cd terraform
+terraform init -backend-config=environments/test.backend.tfvars
+terraform apply -var-file=environments/test.tfvars
+```
 
 ---
 
@@ -317,7 +352,7 @@ ticket-platform/
 │   ├── TicketPlatform.Api/              # .NET 10 Web API
 │   │   ├── Controllers/
 │   │   │   ├── AuthController.cs        # Register, login, phone OTP, referrals
-│   │   │   ├── EventsController.cs      # Event + ticket type CRUD
+│   │   │   ├── EventsController.cs      # Event + ticket type CRUD, pagination, thumbnails
 │   │   │   ├── OrdersController.cs      # Order creation + listing
 │   │   │   ├── PaymentsController.cs    # Checkout, mock-confirm, Stripe webhook
 │   │   │   ├── CheckInController.cs     # QR token validation
@@ -326,13 +361,15 @@ ticket-platform/
 │   │   │   ├── TokenService.cs          # JWT generation
 │   │   │   ├── QrTokenService.cs        # HMAC QR token generation
 │   │   │   ├── SlugHelper.cs            # Slug + referral code generation
+│   │   │   ├── StorageService.cs        # IStorageService + S3StorageService (base64 fallback in dev)
+│   │   │   ├── AutoConfirmOrdersService.cs  # Background worker: auto-confirm mock orders after 10 s
 │   │   │   ├── IPaymentProvider.cs      # Payment abstraction
 │   │   │   ├── MockPaymentProvider.cs   # Local dev payment mock
 │   │   │   ├── StripePaymentProvider.cs # Production Stripe
 │   │   │   ├── IOtpSender.cs            # OTP abstraction
 │   │   │   ├── MockOtpSender.cs         # Local dev OTP mock
 │   │   │   └── TwilioOtpSender.cs       # Production Twilio SMS
-│   │   └── Models/Requests.cs
+│   │   └── Models/Requests.cs           # DTOs incl. EventsPagedResult
 │   ├── TicketPlatform.Core/             # Domain entities + enums
 │   ├── TicketPlatform.Infrastructure/
 │   │   └── Data/                        # AppDbContext + EF Core migrations
@@ -346,7 +383,7 @@ ticket-platform/
 │       │   ├── components/tp-nav.ts
 │       │   └── services/                # api.ts, auth.ts, icons.ts
 │       ├── public/favicon.svg           # Purple gradient ticket icon
-│       ├── e2e/app.spec.ts              # 60 Playwright E2E tests
+│       ├── e2e/app.spec.ts              # 68 Playwright E2E tests
 │       └── playwright.config.ts
 ├── helm/                                # Kubernetes Helm chart
 │   ├── templates/                       # Deployment, Service, Ingress, HPA,
@@ -354,6 +391,19 @@ ticket-platform/
 │   ├── dashboards/                      # Grafana dashboard JSON (4 dashboards)
 │   ├── values.yaml
 │   └── values-test.yaml                 # Test ring overrides
+├── terraform/                           # Full AWS infrastructure as code
+│   ├── main.tf                          # Providers, backend, locals
+│   ├── vpc.tf                           # VPC, subnets, NAT, IGW
+│   ├── eks.tf                           # EKS cluster + managed node group + OIDC
+│   ├── ecr.tf                           # ECR repositories (API + frontend)
+│   ├── rds.tf                           # RDS PostgreSQL 16 (private subnet, encrypted)
+│   ├── s3.tf                            # S3 thumbnail bucket (CORS, public-read)
+│   ├── iam.tf                           # CI user, IRSA role for API pod (S3 + SSM)
+│   ├── ssm.tf                           # Secrets: JWT, DB URL, Stripe, owner creds
+│   ├── k8s-addons.tf                    # nginx ingress, cert-manager, kube-prometheus-stack
+│   ├── variables.tf / outputs.tf
+│   ├── environments/                    # test.tfvars, prod.tfvars + backend configs
+│   └── scripts/bootstrap-state.sh      # Create S3 + DynamoDB state backend
 ├── .github/workflows/deploy.yml         # CI/CD – Test Ring pipeline
 ├── Dockerfile
 ├── Dockerfile.frontend
@@ -386,8 +436,14 @@ ticket-platform/
 - Security headers — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`; server errors never surface to frontend
 - Prometheus metrics + four Grafana dashboards (API requests, outbound HTTP, cluster resources, business metrics)
 - GitHub Actions CI/CD pipeline — build → test → ECR push → EKS deploy → E2E smoke suite
-- 60 Playwright E2E tests (full CI + EKS ring coverage)
+- 68 Playwright E2E tests (full CI + EKS ring coverage)
 - Favicon — purple gradient ticket SVG icon
+- **Event thumbnails** — S3-backed cover image upload per event; base64 data-URL fallback in local dev
+- **Events pagination** — `GET /events?page=1&pageSize=12`; center-justified grid on all screen sizes
+- **AppOwner manage-all** — platform owner can view/unpublish any event via `/events/admin`
+- **Ticket type editing** — admins can edit ticket types inline when creating events
+- **Auto-confirm orders** — in dev/test (`Payment:Provider=Mock`), pending orders auto-confirm after 10 s
+- **Terraform IaC** — full AWS environment (VPC, EKS, RDS, ECR, S3, IAM, SSM) in `terraform/`
 
 ### Planned 🔜
 - [ ] Venue payout system (Stripe Connect)
