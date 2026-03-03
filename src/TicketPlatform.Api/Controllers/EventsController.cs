@@ -46,7 +46,7 @@ public class EventsController(AppDbContext db) : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "VenueAdmin")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
     public async Task<ActionResult<Event>> Create(CreateEventRequest req)
     {
         var venue = await db.Venues.FindAsync(req.VenueId);
@@ -71,7 +71,7 @@ public class EventsController(AppDbContext db) : ControllerBase
     }
 
     [HttpPut("{id:guid}/publish")]
-    [Authorize(Roles = "VenueAdmin")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
     public async Task<IActionResult> Publish(Guid id)
     {
         var ev = await db.Events.FindAsync(id);
@@ -82,7 +82,7 @@ public class EventsController(AppDbContext db) : ControllerBase
     }
 
     [HttpPost("{eventId:guid}/ticket-types")]
-    [Authorize(Roles = "VenueAdmin")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
     public async Task<ActionResult<TicketType>> CreateTicketType(Guid eventId, CreateTicketTypeRequest req)
     {
         var ev = await db.Events.FindAsync(eventId);

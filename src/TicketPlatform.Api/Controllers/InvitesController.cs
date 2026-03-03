@@ -60,6 +60,7 @@ public class InvitesController(AppDbContext db, TokenService tokenService, IConf
     [Authorize(Roles = "AppOwner")]
     public async Task<ActionResult<object>> ListInvites()
     {
+        var baseUrl = config["AppBaseUrl"] ?? "http://localhost:5173";
         var invites = await db.VenueInvites
             .OrderByDescending(i => i.CreatedAt)
             .Select(i => new
@@ -67,6 +68,7 @@ public class InvitesController(AppDbContext db, TokenService tokenService, IConf
                 i.Id,
                 i.Email,
                 i.VenueName,
+                i.Token,
                 i.CreatedAt,
                 i.ExpiresAt,
                 i.UsedAt,
@@ -75,7 +77,17 @@ public class InvitesController(AppDbContext db, TokenService tokenService, IConf
                        : "pending",
             })
             .ToListAsync();
-        return Ok(invites);
+        return Ok(invites.Select(i => new
+        {
+            i.Id,
+            i.Email,
+            i.VenueName,
+            i.CreatedAt,
+            i.ExpiresAt,
+            i.UsedAt,
+            i.status,
+            inviteUrl = i.status == "pending" ? $"{baseUrl}/invite/{i.Token}" : (string?)null,
+        }));
     }
 
     // DELETE /admin/invites/{id} — revoke an unused invite

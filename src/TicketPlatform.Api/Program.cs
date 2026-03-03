@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Prometheus;
 using TicketPlatform.Api.Services;
 using TicketPlatform.Infrastructure.Data;
 
@@ -102,9 +103,12 @@ app.UseCors("frontend");
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 app.UseRateLimiter();
+app.UseRouting();
+app.UseHttpMetrics();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapMetrics("/metrics");
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
 
 // Apply any pending EF Core migrations on startup (safe to run multiple times)

@@ -37,3 +37,7 @@ env:
 extraEnv:
   Payment__Provider: Mock
   Otp__Provider: Mock
+  AppBaseUrl: https://app.100.29.51.191.sslip.io
+
+monitoring:
+  enabled: true

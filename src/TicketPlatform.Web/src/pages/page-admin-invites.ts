@@ -173,7 +173,8 @@ export class PageAdminInvites extends LitElement {
                   <td><span class="badge badge-${inv.status}">${inv.status}</span></td>
                   <td>
                     <div class="row-actions">
-                      ${inv.status === 'pending' ? html`
+                      ${inv.status === 'pending' && inv.inviteUrl ? html`
+                        <button class="btn-sm" @click=${() => this._copy(inv.inviteUrl)}>Copy Link</button>
                         <button class="btn-sm btn-danger" @click=${() => this._revoke(inv.id)}>Revoke</button>
                       ` : ''}
                     </div>
