@@ -244,14 +244,29 @@ jobs:
             --name ${{ secrets.EKS_CLUSTER_NAME }} \
             --region ${{ env.AWS_REGION }}
 
+      # ── Renew ECR pull secret (token expires every 12h) ─────
+      - name: Renew ECR pull secret
+        run: |
+          kubectl create secret docker-registry ecr-pull-secret \
+            --docker-server=$ECR_REGISTRY \
+            --docker-username=AWS \
+            --docker-password=$(aws ecr get-login-password --region ${{ env.AWS_REGION }}) \
+            -n ticket-platform-test \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       # ── Deploy via Helm ──────────────────────────────────────
       # Note: DB migrations run automatically via db.Database.Migrate() in Program.cs
       # on pod startup — EKS pods have VPC access to RDS, GitHub Actions runner does not.
       - name: Helm upgrade (test ring)
-        env:
-          DB_CONN: ${{ secrets.TEST_DB_CONNECTION_STRING }}
-          JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
         run: |
+          # Retrieve secrets from SSM (avoids GitHub secret special-char issues)
+          DB_CONN=$(aws ssm get-parameter \
+            --name /ticket-platform/test/db-connection-string \
+            --with-decryption --query Parameter.Value --output text)
+          JWT_SECRET=$(aws ssm get-parameter \
+            --name /ticket-platform/test/jwt-secret \
+            --with-decryption --query Parameter.Value --output text)
+
           helm upgrade --install ticket-platform-test ./helm \
             --namespace ticket-platform-test \
             --create-namespace \
