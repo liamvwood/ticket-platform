@@ -240,7 +240,7 @@ test.describe('Venue admin flow', () => {
 
   test('published event appears in public events list', async ({ page }) => {
     await page.goto('/events');
-    await page.waitForTimeout(500);
+    await page.waitForSelector('.event-card', { timeout: 5000 });
     const cards = page.locator('.event-card');
     const count = await cards.count();
     // At least one card should show (real events now exist)
