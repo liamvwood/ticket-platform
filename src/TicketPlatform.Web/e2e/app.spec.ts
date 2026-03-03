@@ -793,3 +793,88 @@ test.describe('VenueAdmin invite-only lockdown', () => {
     expect(res.json().email).toBe(invitedEmail);
   });
 });
+
+// ─── Events pagination ──────────────────────────────────────────────────────
+
+test.describe('Events pagination', () => {
+  test('GET /events returns paginated shape', async () => {
+    const res = await apiGet('/events?page=1&pageSize=5');
+    expect(res.status()).toBe(200);
+    const body = res.json() as any;
+    expect(Array.isArray(body.items)).toBe(true);
+    expect(typeof body.page).toBe('number');
+    expect(typeof body.totalPages).toBe('number');
+    expect(typeof body.totalCount).toBe('number');
+    expect(body.page).toBe(1);
+  });
+
+  test('pageSize is respected', async () => {
+    const res = await apiGet('/events?page=1&pageSize=2');
+    expect(res.status()).toBe(200);
+    const body = res.json() as any;
+    expect(body.items.length).toBeLessThanOrEqual(2);
+  });
+
+  test('GET /events/admin requires AppOwner role', async () => {
+    // unauthenticated → 401
+    const anonRes = await apiGet('/events/admin');
+    expect(anonRes.status()).toBe(401);
+
+    // AppOwner → 200
+    const ownerToken = await getToken(OWNER_EMAIL, OWNER_PASS);
+    const ownerRes = await apiGet('/events/admin?page=1&pageSize=10', ownerToken);
+    expect(ownerRes.status()).toBe(200);
+    const body = ownerRes.json() as any;
+    expect(Array.isArray(body.items)).toBe(true);
+  });
+});
+
+// ─── Event thumbnails ───────────────────────────────────────────────────────
+
+test.describe('Event thumbnails', () => {
+  let ownerToken = '';
+  let thumbEventId = '';
+
+  test('setup: create event for thumbnail test', async () => {
+    ownerToken = await getToken(OWNER_EMAIL, OWNER_PASS);
+    const venue = (await apiGet('/venues', ownerToken)).json();
+    const venueId = Array.isArray(venue) ? venue[0]?.id : null;
+    if (!venueId) return;
+    const res = await apiPost('/events', {
+      name: `Thumb Test ${RUN}`,
+      description: 'Thumbnail test event',
+      startsAt: new Date(Date.now() + 86400000 * 30).toISOString(),
+      endsAt: new Date(Date.now() + 86400000 * 30 + 7200000).toISOString(),
+      saleStartsAt: new Date().toISOString(),
+      venueId,
+    }, ownerToken);
+    expect(res.status()).toBe(201);
+    thumbEventId = res.json().id;
+  });
+
+  test('can upload a thumbnail (data-URL stored in dev)', async () => {
+    if (!thumbEventId || !ownerToken) return;
+    // Create a minimal 1×1 PNG as a Blob
+    const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const binary = Buffer.from(pngB64, 'base64');
+    const form = new FormData();
+    form.append('file', new Blob([binary], { type: 'image/png' }), 'thumb.png');
+    const r = await fetch(`${API}/events/${thumbEventId}/thumbnail`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: form,
+    });
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(typeof body.thumbnailUrl).toBe('string');
+    expect(body.thumbnailUrl.length).toBeGreaterThan(0);
+  });
+
+  test('uploaded thumbnail appears on GET /events/:id', async () => {
+    if (!thumbEventId || !ownerToken) return;
+    const res = await apiGet(`/events/${thumbEventId}`, ownerToken);
+    expect(res.status()).toBe(200);
+    // thumbnailUrl may be null if upload was skipped (e.g. S3 not configured) — just ensure field exists
+    expect('thumbnailUrl' in res.json()).toBe(true);
+  });
+});

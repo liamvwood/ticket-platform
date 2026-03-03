@@ -26,6 +26,12 @@ export class PageVenueNewEvent extends LitElement {
     }
     .btn:hover:not(:disabled) { background: #5a52e0; }
     .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent; border: 1px solid #2e2e3e; color: #ccc;
+      padding: .8rem 2rem; border-radius: 10px; font-weight: 600; font-size: 1rem;
+      cursor: pointer; font-family: inherit; transition: all .2s;
+    }
+    .btn-ghost:hover { border-color: #555; color: #fff; }
     .error { background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: .75rem 1rem; color: #fca5a5; margin-bottom: 1rem; }
     .tt-added { background: #14532d; border: 1px solid #166534; border-radius: 8px; padding: .75rem 1rem; color: #86efac; margin-bottom: 1rem; }
     /* Ticket type list */
@@ -41,6 +47,9 @@ export class PageVenueNewEvent extends LitElement {
     .tt-item-price { font-size: 1.1rem; font-weight: 800; color: #22c55e; white-space: nowrap; }
     .tt-remove { background: none; border: none; color: #555568; cursor: pointer; padding: .25rem; border-radius: 4px; line-height: 1; font-size: 1.1rem; }
     .tt-remove:hover { color: #ef4444; background: #1e0a0a; }
+    .tt-edit { background: none; border: none; color: #555568; cursor: pointer; padding: .25rem; border-radius: 4px; line-height: 1; font-size: 1.1rem; }
+    .tt-edit:hover { color: #818cf8; background: #1e1e3e; }
+    .tt-item-editing { border-color: #6c63ff; background: #1a1a30; }
     .step-indicator { display: flex; gap: 1rem; margin-bottom: 2rem; }
     .step { padding: .4rem 1rem; border-radius: 999px; font-size: .8rem; font-weight: 600; }
     .step.active { background: #1e1b4b; color: #818cf8; border: 1px solid #3730a3; }
@@ -80,6 +89,7 @@ export class PageVenueNewEvent extends LitElement {
   @state() ttPrice = '25.00';
   @state() ttQty = '200';
   @state() ttMax = '4';
+  @state() editingTtId = ''; // when set, "Add" becomes "Update"
 
   async connectedCallback() {
     super.connectedCallback();
@@ -134,18 +144,33 @@ export class PageVenueNewEvent extends LitElement {
     e.preventDefault();
     this.loading = true; this.error = '';
     try {
+      if (this.editingTtId) {
+        // Delete existing and recreate with updated values
+        await api.deleteTicketType(this.createdEventId, this.editingTtId);
+        this.ticketTypes = this.ticketTypes.filter(t => t.id !== this.editingTtId);
+      }
       const tt = await api.createTicketType(this.createdEventId, {
         name: this.ttName, price: parseFloat(this.ttPrice),
         totalQuantity: parseInt(this.ttQty), maxPerOrder: parseInt(this.ttMax),
       });
       this.ticketTypes = [...this.ticketTypes, tt];
-      this.ttAdded++;
+      this.ttAdded = this.ticketTypes.length;
+      this.editingTtId = '';
       this.ttName = 'General Admission'; this.ttPrice = ''; this.ttQty = ''; this.ttMax = '4';
     } catch (err: any) { this.error = err.message; }
     finally { this.loading = false; }
   }
 
+  private _editTicketType(tt: {id: string; name: string; price: number; totalQuantity: number; maxPerOrder: number}) {
+    this.editingTtId = tt.id;
+    this.ttName = tt.name;
+    this.ttPrice = tt.price.toFixed(2);
+    this.ttQty = String(tt.totalQuantity);
+    this.ttMax = String(tt.maxPerOrder);
+  }
+
   private async _removeTicketType(id: string) {
+    if (this.editingTtId === id) { this.editingTtId = ''; }
     this.loading = true; this.error = '';
     try {
       await api.deleteTicketType(this.createdEventId, id);
@@ -263,12 +288,14 @@ export class PageVenueNewEvent extends LitElement {
             <h2>Ticket Types Added</h2>
             <div class="tt-list">
               ${this.ticketTypes.map(tt => html`
-                <div class="tt-item">
+                <div class="tt-item ${this.editingTtId === tt.id ? 'tt-item-editing' : ''}">
                   <div class="tt-item-info">
                     <div class="tt-item-name">${tt.name}</div>
                     <div class="tt-item-meta">${tt.totalQuantity} tickets · max ${tt.maxPerOrder}/order</div>
                   </div>
                   <div class="tt-item-price">$${tt.price.toFixed(2)}</div>
+                  <button class="tt-edit" title="Edit" ?disabled=${this.loading}
+                    @click=${() => this._editTicketType(tt)}>✏️</button>
                   <button class="tt-remove" title="Remove" ?disabled=${this.loading}
                     @click=${() => this._removeTicketType(tt.id)}>✕</button>
                 </div>
@@ -278,7 +305,7 @@ export class PageVenueNewEvent extends LitElement {
         ` : ''}
         <form @submit=${this._addTicketType}>
           <div class="card">
-            <h2>${this.ticketTypes.length > 0 ? 'Add Another Ticket Type' : 'Add Ticket Type'}</h2>
+            <h2>${this.editingTtId ? 'Edit Ticket Type' : this.ticketTypes.length > 0 ? 'Add Another Ticket Type' : 'Add Ticket Type'}</h2>
             <div class="field">
               <label>Name</label>
               <input type="text" .value=${this.ttName} @input=${(e: any) => this.ttName = e.target.value} required placeholder="General Admission" />
@@ -300,9 +327,14 @@ export class PageVenueNewEvent extends LitElement {
           </div>
           <div style="display:flex;gap:1rem;flex-wrap:wrap">
             <button class="btn" type="submit" ?disabled=${this.loading}>
-              ${this.loading ? 'Adding…' : '+ Add Ticket Type'}
+              ${this.loading ? (this.editingTtId ? 'Updating…' : 'Adding…') : (this.editingTtId ? '✓ Update Ticket Type' : '+ Add Ticket Type')}
             </button>
-            ${this.ticketTypes.length > 0 ? html`
+            ${this.editingTtId ? html`
+              <button class="btn-ghost" type="button" @click=${() => { this.editingTtId = ''; this.ttName = 'General Admission'; this.ttPrice = ''; this.ttQty = ''; this.ttMax = '4'; }}>
+                Cancel Edit
+              </button>
+            ` : ''}
+            ${this.ticketTypes.length > 0 && !this.editingTtId ? html`
               <button class="btn" type="button" style="background:#22c55e" ?disabled=${this.loading} @click=${this._publish}>
                 ${this.loading ? '…' : '✓ Publish Event'}
               </button>

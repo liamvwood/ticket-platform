@@ -37,6 +37,7 @@ export class PageEventDetail extends LitElement {
       background: #6c63ff; color: #fff; padding: 0.6rem 1.4rem; border-radius: 8px;
       font-weight: 700; font-size: 0.9rem; cursor: pointer; border: none;
       font-family: inherit; transition: background 0.2s; white-space: nowrap;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis;
     }
     .btn:hover { background: #5a52e0; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -113,14 +114,18 @@ export class PageEventDetail extends LitElement {
         flex-direction: column;
         align-items: stretch;
         gap: 0.75rem;
+        overflow: hidden;
       }
       .tt-right > .price { font-size: 1.2rem; }
       .qty-row { justify-content: space-between; }
       .btn {
         width: 100%;
         text-align: center;
-        white-space: normal;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         flex: none;
+        box-sizing: border-box;
       }
       .modal { padding: 1.5rem; }
     }
