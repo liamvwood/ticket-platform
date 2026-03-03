@@ -91,6 +91,22 @@ builder.Services.AddRateLimiter(options =>
         o.QueueLimit = 0;
         o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
     });
+    // Protect auth endpoints from brute force
+    options.AddFixedWindowLimiter("auth", o =>
+    {
+        o.Window = TimeSpan.FromMinutes(1);
+        o.PermitLimit = 10;
+        o.QueueLimit = 0;
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+    // Extra-strict limit on OTP requests
+    options.AddFixedWindowLimiter("otp", o =>
+    {
+        o.Window = TimeSpan.FromMinutes(10);
+        o.PermitLimit = 3;
+        o.QueueLimit = 0;
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
 });
 
 var app = builder.Build();
@@ -116,13 +132,27 @@ if (app.Environment.IsDevelopment())
 app.UseCors("frontend");
 if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
+
+// Security headers
+var isDev = app.Environment.IsDevelopment();
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    ctx.Response.Headers["X-Frame-Options"] = "DENY";
+    ctx.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    ctx.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    if (!isDev)
+        ctx.Response.Headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains";
+    await next();
+});
 app.UseRateLimiter();
 app.UseRouting();
 app.UseHttpMetrics();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapMetrics("/metrics");
+// Restrict metrics to internal cluster access only (not exposed via public ingress)
+app.MapMetrics("/metrics").RequireHost("*:8080");
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
 
 // Apply any pending EF Core migrations on startup (safe to run multiple times)

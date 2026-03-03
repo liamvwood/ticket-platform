@@ -2,6 +2,7 @@ using System.Security.Claims;
 using BCrypt.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using TicketPlatform.Api.Models;
 using TicketPlatform.Api.Services;
@@ -21,6 +22,7 @@ public class AuthController(
     AppMetrics metrics) : ControllerBase
 {
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest req)
     {
         if (await db.Users.AnyAsync(u => u.Email == req.Email))
@@ -57,6 +59,7 @@ public class AuthController(
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest req)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == req.Email.ToLowerInvariant());
@@ -72,6 +75,7 @@ public class AuthController(
 
     // POST /auth/phone/request-otp
     [HttpPost("phone/request-otp")]
+    [EnableRateLimiting("otp")]
     public async Task<ActionResult<object>> RequestOtp([FromBody] PhoneOtpRequest req)
     {
         var phone = req.PhoneNumber?.Trim();

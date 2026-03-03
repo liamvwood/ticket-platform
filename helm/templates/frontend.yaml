@@ -65,6 +65,8 @@ metadata:
   name: {{ .Release.Name }}-frontend
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
     {{- if .Values.frontend.ingress.tls }}
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     {{- end }}

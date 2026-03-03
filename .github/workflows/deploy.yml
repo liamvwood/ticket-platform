@@ -266,6 +266,12 @@ jobs:
           JWT_SECRET=$(aws ssm get-parameter \
             --name /ticket-platform/test/jwt-secret \
             --with-decryption --query Parameter.Value --output text)
+          OWNER_EMAIL=$(aws ssm get-parameter \
+            --name /ticket-platform/test/owner-email \
+            --with-decryption --query Parameter.Value --output text)
+          OWNER_PASSWORD=$(aws ssm get-parameter \
+            --name /ticket-platform/test/owner-password \
+            --with-decryption --query Parameter.Value --output text)
 
           helm upgrade --install ticket-platform-test ./helm \
             --namespace ticket-platform-test \
@@ -279,6 +285,8 @@ jobs:
             --set frontend.ingress.host=${{ secrets.TEST_FRONTEND_HOST }} \
             --set "secrets.connectionString=$DB_CONN" \
             --set "secrets.jwtSecret=$JWT_SECRET" \
+            --set "secrets.ownerEmail=$OWNER_EMAIL" \
+            --set "secrets.ownerPassword=$OWNER_PASSWORD" \
             --set secrets.stripeSecretKey="unused" \
             --set secrets.stripeWebhookSecret="unused" \
             --timeout 5m \

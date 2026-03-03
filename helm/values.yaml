@@ -51,6 +51,8 @@ secrets:
   jwtSecret: ""
   stripeSecretKey: ""
   stripeWebhookSecret: ""
+  ownerEmail: ""
+  ownerPassword: ""
 
 monitoring:
   enabled: false

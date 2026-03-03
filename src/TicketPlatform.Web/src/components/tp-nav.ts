@@ -6,6 +6,7 @@ import { icons } from '../services/icons.js';
 @customElement('tp-nav')
 export class TpNav extends LitElement {
   static styles = css`
+    :host { display: block; }
     nav {
       background: #13131c;
       border-bottom: 1px solid #2e2e3e;
@@ -145,7 +146,7 @@ export class TpNav extends LitElement {
           ${this.loggedIn ? html`
             <a @click=${() => this._nav('/my-tickets')}>My Tickets</a>
             ${this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/venue')}>Venue Portal</a>` : ''}
-            ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/venue')}>Events</a>` : ''}
+            ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/venue')}>Venue Portal</a>` : ''}
             ${this.role === 'Scanner' || this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/scan')}>Scanner</a>` : ''}
             ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/admin/invites')}>Admin</a>` : ''}
             <button class="btn btn-ghost" @click=${() => auth.logout()}>Logout</button>
@@ -163,7 +164,7 @@ export class TpNav extends LitElement {
         ${this.loggedIn ? html`
           <a @click=${() => this._nav('/my-tickets')}>My Tickets</a>
           ${this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/venue')}>Venue Portal</a>` : ''}
-          ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/venue')}>Events</a>` : ''}
+          ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/venue')}>Venue Portal</a>` : ''}
           ${this.role === 'Scanner' || this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/scan')}>Scanner</a>` : ''}
           ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/admin/invites')}>Admin</a>` : ''}
           <button class="btn btn-ghost" @click=${() => auth.logout()}>Logout</button>

@@ -45,6 +45,11 @@ export class PageVenueNewEvent extends LitElement {
   @state() error = '';
   @state() ttAdded = 0;
   @state() venues: any[] = [];
+  @state() showNewVenue = false;
+  @state() newVenueName = '';
+  @state() newVenueAddress = '';
+  @state() newVenueCity = 'Austin';
+  @state() newVenueState = 'TX';
 
   // Event fields
   @state() name = '';
@@ -71,6 +76,23 @@ export class PageVenueNewEvent extends LitElement {
       // VenueAdmin: use the seeded/default venue
       this.venueId = '00000000-0000-0000-0000-000000000001';
     }
+  }
+
+  private async _createVenue(e: Event) {
+    e.preventDefault();
+    if (!this.newVenueName.trim()) return;
+    this.loading = true; this.error = '';
+    try {
+      const v = await api.createVenue({
+        name: this.newVenueName, address: this.newVenueAddress,
+        city: this.newVenueCity, state: this.newVenueState,
+      });
+      this.venues = [...this.venues, v];
+      this.venueId = v.id;
+      this.showNewVenue = false;
+      this.newVenueName = ''; this.newVenueAddress = '';
+    } catch (err: any) { this.error = err.message; }
+    finally { this.loading = false; }
   }
 
   private async _createEvent(e: Event) {
@@ -135,11 +157,36 @@ export class PageVenueNewEvent extends LitElement {
             ${isOwner ? html`
               <div class="field">
                 <label>Venue</label>
-                <select .value=${this.venueId} @change=${(e: any) => this.venueId = e.target.value}>
-                  ${this.venues.length === 0
-                    ? html`<option value="">No venues yet — invite a venue admin first</option>`
-                    : this.venues.map(v => html`<option value=${v.id}>${v.name}</option>`)}
-                </select>
+                ${this.showNewVenue ? html`
+                  <form @submit=${this._createVenue} style="margin-top:.5rem">
+                    <input type="text" placeholder="Venue name *" .value=${this.newVenueName}
+                      @input=${(e: any) => this.newVenueName = e.target.value} required style="margin-bottom:.5rem" />
+                    <input type="text" placeholder="Address" .value=${this.newVenueAddress}
+                      @input=${(e: any) => this.newVenueAddress = e.target.value} style="margin-bottom:.5rem" />
+                    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem">
+                      <input type="text" placeholder="City" .value=${this.newVenueCity}
+                        @input=${(e: any) => this.newVenueCity = e.target.value} style="flex:1" />
+                      <input type="text" placeholder="State" .value=${this.newVenueState} maxlength="2"
+                        @input=${(e: any) => this.newVenueState = e.target.value} style="flex:0 0 70px" />
+                    </div>
+                    <div style="display:flex;gap:.5rem">
+                      <button class="btn" type="submit" ?disabled=${this.loading} style="flex:1">Save Venue</button>
+                      <button class="btn" type="button" style="background:#2e2e3e;flex:0 0 auto"
+                        @click=${() => this.showNewVenue = false}>Cancel</button>
+                    </div>
+                  </form>
+                ` : html`
+                  <select .value=${this.venueId} @change=${(e: any) => this.venueId = e.target.value}>
+                    ${this.venues.length === 0
+                      ? html`<option value="">No venues yet</option>`
+                      : this.venues.map(v => html`<option value=${v.id}>${v.name}</option>`)}
+                  </select>
+                  <div style="margin-top:.5rem">
+                    <span style="font-size:.8rem;color:#6c63ff;cursor:pointer" @click=${() => this.showNewVenue = true}>
+                      + Create new venue
+                    </span>
+                  </div>
+                `}
               </div>
             ` : ''}
             <div class="field">

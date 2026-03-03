@@ -19,4 +19,28 @@ public class VenuesController(AppDbContext db) : ControllerBase
             .ToListAsync();
         return Ok(venues);
     }
+
+    // POST /venues — AppOwner creates a new venue
+    [HttpPost]
+    [Authorize(Roles = "AppOwner")]
+    public async Task<ActionResult<object>> CreateVenue([FromBody] CreateVenueRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Name))
+            return BadRequest("Venue name is required.");
+
+        var venue = new TicketPlatform.Core.Entities.Venue
+        {
+            Id = Guid.NewGuid(),
+            Name = req.Name.Trim(),
+            Address = req.Address?.Trim() ?? "",
+            City = req.City?.Trim() ?? "",
+            State = req.State?.Trim() ?? "",
+            CreatedAt = DateTimeOffset.UtcNow,
+        };
+        db.Venues.Add(venue);
+        await db.SaveChangesAsync();
+        return Ok(new { venue.Id, venue.Name });
+    }
 }
+
+public record CreateVenueRequest(string Name, string? Address, string? City, string? State);

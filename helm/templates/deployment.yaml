@@ -49,6 +49,16 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: stripeWebhookSecret
+            - name: AppOwner__Email
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: ownerEmail
+            - name: AppOwner__Password
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: ownerPassword
             {{- range $key, $val := .Values.extraEnv }}
             - name: {{ $key }}
               value: {{ $val | quote }}

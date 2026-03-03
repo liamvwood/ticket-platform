@@ -41,6 +41,8 @@ export const api = {
 
   // Venues
   getVenues: () => request<any[]>('/venues'),
+  createVenue: (data: { name: string; address?: string; city?: string; state?: string }) =>
+    request<any>('/venues', { method: 'POST', body: JSON.stringify(data) }),
 
   // Events
   getEvents: () => request<any[]>('/events'),
