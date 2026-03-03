@@ -443,10 +443,17 @@ test.describe('Navigation', () => {
 // ─── Event slugs ───────────────────────────────────────────────────────────
 
 test.describe('Event slugs', () => {
+  // Helper to get all events as a flat array (handles paginated response)
+  async function getAllEvents() {
+    const res = await apiGet('/events?pageSize=100');
+    const body = res.json() as any;
+    return Array.isArray(body) ? body : (body.items ?? []);
+  }
+
   test('events returned by API include a slug', async () => {
-    const res = await apiGet('/events');
+    const res = await apiGet('/events?pageSize=100');
     expect(res.status()).toBe(200);
-    const events = res.json() as any[];
+    const events = await getAllEvents();
     for (const ev of events) {
       expect(typeof ev.slug).toBe('string');
       expect(ev.slug.length).toBeGreaterThan(0);
@@ -454,8 +461,7 @@ test.describe('Event slugs', () => {
   });
 
   test('event is reachable by slug', async () => {
-    const listRes = await apiGet('/events');
-    const events = listRes.json() as any[];
+    const events = await getAllEvents();
     if (events.length === 0) return; // no events seeded yet
     const ev = events[0];
     const res = await apiGet(`/events/${ev.slug}`);
@@ -464,8 +470,7 @@ test.describe('Event slugs', () => {
   });
 
   test('OG preview endpoint returns HTML with og:title', async () => {
-    const listRes = await apiGet('/events');
-    const events = listRes.json() as any[];
+    const events = await getAllEvents();
     if (events.length === 0) return;
     const ev = events[0];
     const r = await fetch(`${API}/og/events/${ev.id}`);
@@ -476,8 +481,7 @@ test.describe('Event slugs', () => {
   });
 
   test('OG image endpoint returns SVG', async () => {
-    const listRes = await apiGet('/events');
-    const events = listRes.json() as any[];
+    const events = await getAllEvents();
     if (events.length === 0) return;
     const ev = events[0];
     const r = await fetch(`${API}/og/events/${ev.id}/image`);

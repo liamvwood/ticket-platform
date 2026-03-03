@@ -30,3 +30,10 @@ public record CreateOrderRequest(
     decimal PlatformFee = 0m);
 
 public record QrValidationRequest(string Token);
+
+public record EventsPagedResult(
+    List<TicketPlatform.Core.Entities.Event> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages);

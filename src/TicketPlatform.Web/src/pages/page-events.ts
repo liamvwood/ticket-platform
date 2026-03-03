@@ -13,16 +13,21 @@ const DEMO_EVENTS = [
   { id: 'demo-6', name: 'Willie Nelson Picnic', venue: { name: 'Outlaw Ranch' }, startsAt: '2025-07-04T16:00:00Z', ticketTypes: [{ price: 95 }, { price: 180 }], _demo: true, _icon: 'star' },
 ];
 
+const PAGE_SIZE = 12;
+
 @customElement('page-events')
 export class PageEvents extends LitElement {
   static styles = css`
     :host { display: block; padding: 2rem; max-width: 1100px; margin: 0 auto; }
     h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; }
     .subtitle { color: #8888a8; margin-bottom: 2rem; }
+
+    /* Center-justify grid items including the last (partial) row */
     .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      display: flex;
+      flex-wrap: wrap;
       gap: 1.5rem;
+      justify-content: center;
     }
     .event-card {
       background: #1a1a24;
@@ -31,6 +36,8 @@ export class PageEvents extends LitElement {
       overflow: hidden;
       transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
       cursor: pointer;
+      width: 320px;
+      flex-shrink: 0;
     }
     .event-card:hover {
       border-color: #6c63ff;
@@ -42,10 +49,17 @@ export class PageEvents extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
+    }
+    .event-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
     .thumb-music { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
     .thumb-mic   { background: linear-gradient(135deg, #4a044e 0%, #831843 100%); }
     .thumb-star  { background: linear-gradient(135deg, #451a03 0%, #78350f 100%); }
+    .thumb-default { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
     .event-body { padding: 1.25rem; }
     .event-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; line-height: 1.3; }
     .event-meta-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: #8888a8; margin-bottom: 0.4rem; }
@@ -80,34 +94,88 @@ export class PageEvents extends LitElement {
       gap: 0.5rem;
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; flex-shrink: 0; }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 2.5rem;
+    }
+    .page-btn {
+      background: #1a1a24;
+      border: 1px solid #2e2e3e;
+      color: #ccc;
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+      min-width: 2.5rem;
+      text-align: center;
+    }
+    .page-btn:hover:not(:disabled) { border-color: #6c63ff; color: #818cf8; }
+    .page-btn.active { background: #6c63ff; border-color: #6c63ff; color: #fff; font-weight: 700; }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .page-info { color: #8888a8; font-size: 0.85rem; padding: 0 0.5rem; }
+
     @media (max-width: 640px) {
       :host { padding: 1.25rem; }
       h1 { font-size: 1.5rem; }
-      .grid { grid-template-columns: 1fr; gap: 1rem; }
+      .event-card { width: 100%; }
     }
   `;
 
   @state() events: any[] = [];
   @state() loading = true;
   @state() isDemo = false;
+  @state() page = 1;
+  @state() totalPages = 1;
+  @state() totalCount = 0;
 
   async connectedCallback() {
     super.connectedCallback();
+    await this._loadPage(1);
+  }
+
+  private async _loadPage(page: number) {
+    this.loading = true;
     try {
-      const result = await api.getEvents();
-      if (result.length > 0) {
-        this.events = result;
+      const result = await api.getEvents(page, PAGE_SIZE);
+      // Handle both paged response { items, page, totalPages } and legacy array
+      if (Array.isArray(result)) {
+        this.events = result.length > 0 ? result : DEMO_EVENTS;
+        this.isDemo = result.length === 0;
+        this.totalPages = 1;
       } else {
-        this.events = DEMO_EVENTS;
-        this.isDemo = true;
+        if (result.items?.length > 0) {
+          this.events = result.items;
+          this.page = result.page;
+          this.totalPages = result.totalPages;
+          this.totalCount = result.totalCount;
+          this.isDemo = false;
+        } else {
+          this.events = DEMO_EVENTS;
+          this.isDemo = true;
+          this.totalPages = 1;
+        }
       }
     } catch {
-      // API unavailable — show demo events so the page isn't empty
       this.events = DEMO_EVENTS;
       this.isDemo = true;
+      this.totalPages = 1;
     } finally {
       this.loading = false;
     }
+  }
+
+  private async _goToPage(p: number) {
+    if (p < 1 || p > this.totalPages) return;
+    this.page = p;
+    await this._loadPage(p);
+    this.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   private _minPrice(event: any) {
@@ -128,6 +196,29 @@ export class PageEvents extends LitElement {
     return icons.music;
   }
 
+  private _renderPagination() {
+    if (this.totalPages <= 1) return '';
+    const pages = [];
+    for (let i = 1; i <= this.totalPages; i++) {
+      // Show first, last, current ±1, and ellipsis
+      if (i === 1 || i === this.totalPages || Math.abs(i - this.page) <= 1) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== '…') {
+        pages.push('…');
+      }
+    }
+    return html`
+      <div class="pagination">
+        <button class="page-btn" ?disabled=${this.page <= 1} @click=${() => this._goToPage(this.page - 1)}>‹ Prev</button>
+        ${pages.map(p => p === '…'
+          ? html`<span class="page-info">…</span>`
+          : html`<button class="page-btn ${p === this.page ? 'active' : ''}" @click=${() => this._goToPage(p as number)}>${p}</button>`
+        )}
+        <button class="page-btn" ?disabled=${this.page >= this.totalPages} @click=${() => this._goToPage(this.page + 1)}>Next ›</button>
+      </div>
+    `;
+  }
+
   render() {
     if (this.loading) return html`<div class="loading">Loading events…</div>`;
     return html`
@@ -142,7 +233,11 @@ export class PageEvents extends LitElement {
       <div class="grid">
         ${this.events.map(ev => html`
           <div class="event-card" @click=${() => navigate(`/events/${ev.slug || ev.id}`)}>
-            <div class="event-thumb ${this._thumbClass(ev)}" .innerHTML=${this._thumbIcon(ev)}></div>
+            <div class="event-thumb ${ev.thumbnailUrl ? '' : this._thumbClass(ev)}">
+              ${ev.thumbnailUrl
+                ? html`<img src=${ev.thumbnailUrl} alt=${ev.name} loading="lazy" />`
+                : html`<span .innerHTML=${this._thumbIcon(ev)}></span>`}
+            </div>
             <div class="event-body">
               <div class="event-name">${ev.name}</div>
               <div class="event-meta-row">
@@ -161,6 +256,7 @@ export class PageEvents extends LitElement {
           </div>
         `)}
       </div>
+      ${this._renderPagination()}
     `;
   }
 }

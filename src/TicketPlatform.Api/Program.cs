@@ -45,10 +45,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<QrTokenService>();
 builder.Services.AddSingleton<AppMetrics>();
+builder.Services.AddSingleton<IStorageService, S3StorageService>();
 
 var paymentProvider = builder.Configuration["Payment:Provider"];
 if (string.Equals(paymentProvider, "Mock", StringComparison.OrdinalIgnoreCase))
+{
     builder.Services.AddSingleton<IPaymentProvider, MockPaymentProvider>();
+    builder.Services.AddHostedService<AutoConfirmOrdersService>();
+}
 else
     builder.Services.AddScoped<IPaymentProvider, StripePaymentProvider>();
 

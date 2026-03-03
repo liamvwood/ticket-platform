@@ -78,6 +78,9 @@ namespace TicketPlatform.Infrastructure.Data.Migrations
                     b.Property<DateTimeOffset>("StartsAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ThumbnailUrl")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("VenueId")
                         .HasColumnType("uuid");
 

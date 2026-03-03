@@ -10,17 +10,69 @@ namespace TicketPlatform.Api.Controllers;
 
 [ApiController]
 [Route("events")]
-public class EventsController(AppDbContext db, AppMetrics metrics) : ControllerBase
+public class EventsController(AppDbContext db, AppMetrics metrics, IStorageService storage) : ControllerBase
 {
+    private const int DefaultPageSize = 12;
+    private const int MaxPageSize = 100;
+
+    // GET /events?page=1&pageSize=12
     [HttpGet]
-    public async Task<ActionResult<List<Event>>> GetAll()
+    public async Task<ActionResult<EventsPagedResult>> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = DefaultPageSize)
     {
-        return await db.Events
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+        page = Math.Max(1, page);
+
+        var query = db.Events
             .Where(e => e.IsPublished)
             .Include(e => e.Venue)
             .Include(e => e.TicketTypes)
-            .OrderBy(e => e.StartsAt)
+            .OrderBy(e => e.StartsAt);
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
+
+        return Ok(new EventsPagedResult(
+            Items: items,
+            Page: page,
+            PageSize: pageSize,
+            TotalCount: totalCount,
+            TotalPages: (int)Math.Ceiling((double)totalCount / pageSize)
+        ));
+    }
+
+    // GET /events/admin — all events (published + draft) for AppOwner
+    [HttpGet("admin")]
+    [Authorize(Roles = "AppOwner")]
+    public async Task<ActionResult<EventsPagedResult>> GetAllAdmin(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = DefaultPageSize)
+    {
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+        page = Math.Max(1, page);
+
+        var query = db.Events
+            .Include(e => e.Venue)
+            .Include(e => e.TicketTypes)
+            .OrderByDescending(e => e.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return Ok(new EventsPagedResult(
+            Items: items,
+            Page: page,
+            PageSize: pageSize,
+            TotalCount: totalCount,
+            TotalPages: (int)Math.Ceiling((double)totalCount / pageSize)
+        ));
     }
 
     [HttpGet("{id:guid}")]
@@ -71,6 +123,26 @@ public class EventsController(AppDbContext db, AppMetrics metrics) : ControllerB
         return CreatedAtAction(nameof(GetById), new { id = ev.Id }, ev);
     }
 
+    // POST /events/{id}/thumbnail — multipart file upload (JPEG/PNG/WebP)
+    [HttpPost("{id:guid}/thumbnail")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
+    [RequestSizeLimit(5 * 1024 * 1024)] // 5 MB max
+    public async Task<IActionResult> UploadThumbnail(Guid id, IFormFile file)
+    {
+        var ev = await db.Events.FindAsync(id);
+        if (ev is null) return NotFound();
+
+        var allowed = new[] { "image/jpeg", "image/png", "image/webp", "image/gif" };
+        if (!allowed.Contains(file.ContentType))
+            return BadRequest("Only JPEG, PNG, WebP and GIF images are accepted.");
+
+        await using var stream = file.OpenReadStream();
+        ev.ThumbnailUrl = await storage.UploadEventThumbnailAsync(id, stream, file.ContentType);
+        await db.SaveChangesAsync();
+
+        return Ok(new { thumbnailUrl = ev.ThumbnailUrl });
+    }
+
     [HttpPut("{id:guid}/publish")]
     [Authorize(Roles = "VenueAdmin,AppOwner")]
     public async Task<IActionResult> Publish(Guid id)
@@ -80,6 +152,17 @@ public class EventsController(AppDbContext db, AppMetrics metrics) : ControllerB
         ev.IsPublished = true;
         await db.SaveChangesAsync();
         metrics.EventsPublishedTotal.Inc();
+        return NoContent();
+    }
+
+    [HttpPut("{id:guid}/unpublish")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
+    public async Task<IActionResult> Unpublish(Guid id)
+    {
+        var ev = await db.Events.FindAsync(id);
+        if (ev is null) return NotFound();
+        ev.IsPublished = false;
+        await db.SaveChangesAsync();
         return NoContent();
     }
 
@@ -100,7 +183,6 @@ public class EventsController(AppDbContext db, AppMetrics metrics) : ControllerB
             MaxPerOrder = req.MaxPerOrder
         };
 
-        // Pre-allocate individual ticket records
         var tickets = Enumerable.Range(0, req.TotalQuantity)
             .Select(_ => new Ticket { Id = Guid.NewGuid(), TicketTypeId = ticketType.Id })
             .ToList();

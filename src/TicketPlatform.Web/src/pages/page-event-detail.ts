@@ -273,6 +273,10 @@ export class PageEventDetail extends LitElement {
       ` : ''}
 
       <div class="header">
+        ${ev.thumbnailUrl ? html`
+          <img src=${ev.thumbnailUrl} alt=${ev.name}
+            style="width:100%;max-height:320px;object-fit:cover;border-radius:14px;margin-bottom:1.5rem" />
+        ` : ''}
         <div class="header-top">
           <div>
             <h1>${ev.name}</h1>

@@ -3,6 +3,15 @@ import { customElement, state } from 'lit/decorators.js';
 import { api } from '../services/api.js';
 import { navigate } from '../services/auth.js';
 
+function getUserRole(): string {
+  try {
+    const token = localStorage.getItem('jwt');
+    if (!token) return '';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ?? payload.role ?? '';
+  } catch { return ''; }
+}
+
 @customElement('page-venue-dashboard')
 export class PageVenueDashboard extends LitElement {
   static styles = css`
@@ -42,6 +51,7 @@ export class PageVenueDashboard extends LitElement {
       font-family: inherit;
     }
     .btn-ghost:hover { border-color: #555; color: #fff; }
+    .owner-badge { background: #78350f22; color: #f59e0b; border: 1px solid #78350f; border-radius: 6px; padding: 0.2rem 0.7rem; font-size: 0.75rem; font-weight: 700; }
     table { width: 100%; border-collapse: collapse; }
     thead th { text-align: left; font-size: 0.8rem; color: #8888a8; padding: 0.75rem 1rem; border-bottom: 1px solid #2e2e3e; text-transform: uppercase; letter-spacing: 0.05em; }
     tbody td { padding: 1rem; border-bottom: 1px solid #1e1e2e; font-size: 0.9rem; }
@@ -53,6 +63,11 @@ export class PageVenueDashboard extends LitElement {
     .progress-fill { background: #6c63ff; border-radius: 999px; height: 6px; }
     .loading { text-align: center; padding: 5rem; color: #8888a8; }
     .empty-row td { text-align: center; color: #8888a8; padding: 3rem; }
+    .pagination { display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; justify-content: center; }
+    .page-btn { background: #1a1a24; border: 1px solid #2e2e3e; color: #ccc; padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
+    .page-btn:hover:not(:disabled) { border-color: #6c63ff; color: #818cf8; }
+    .page-btn.active { background: #6c63ff; border-color: #6c63ff; color: #fff; font-weight: 700; }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     @media (max-width: 640px) {
       :host { padding: 1rem; }
       h1 { font-size: 1.4rem; }
@@ -63,11 +78,31 @@ export class PageVenueDashboard extends LitElement {
 
   @state() events: any[] = [];
   @state() loading = true;
+  @state() isOwner = false;
+  @state() page = 1;
+  @state() totalPages = 1;
 
   async connectedCallback() {
     super.connectedCallback();
-    try { this.events = await api.getEvents(); }
-    finally { this.loading = false; }
+    this.isOwner = getUserRole() === 'AppOwner';
+    await this._loadPage(1);
+  }
+
+  private async _loadPage(page: number) {
+    this.loading = true;
+    try {
+      const result = this.isOwner
+        ? await api.getEventsAdmin(page, 20)
+        : await api.getEvents(page, 20);
+      if (result?.items) {
+        this.events = result.items;
+        this.page = result.page;
+        this.totalPages = result.totalPages;
+      } else {
+        this.events = Array.isArray(result) ? result : [];
+        this.totalPages = 1;
+      }
+    } finally { this.loading = false; }
   }
 
   private _totalTickets() { return this.events.reduce((s, e) => s + (e.ticketTypes?.reduce((ss: number, tt: any) => ss + tt.totalQuantity, 0) ?? 0), 0); }
@@ -80,8 +115,10 @@ export class PageVenueDashboard extends LitElement {
     const tickets = this._totalTickets();
     const revenue = this._totalRevenue();
     return html`
-      <h1>Venue Portal</h1>
-      <p class="sub">Manage your events and track sales.</p>
+      <h1>
+        ${this.isOwner ? html`Platform Overview <span class="owner-badge">App Owner</span>` : 'Venue Portal'}
+      </h1>
+      <p class="sub">${this.isOwner ? 'Manage all events across the platform.' : 'Manage your events and track sales.'}</p>
 
       <div class="stats">
         <div class="stat-card">
@@ -103,7 +140,7 @@ export class PageVenueDashboard extends LitElement {
       </div>
 
       <div class="section-header">
-        <h2>Events</h2>
+        <h2>${this.isOwner ? 'All Events' : 'Events'}</h2>
         <div style="display:flex;gap:.75rem">
           <button class="btn-ghost" @click=${() => navigate('/scan')}>🔍 Scanner</button>
           <button class="btn" @click=${() => navigate('/venue/events/new')}>+ New Event</button>
@@ -114,6 +151,7 @@ export class PageVenueDashboard extends LitElement {
         <thead>
           <tr>
             <th>Event</th>
+            ${this.isOwner ? html`<th>Venue</th>` : ''}
             <th>Date</th>
             <th>Status</th>
             <th>Sold / Total</th>
@@ -122,30 +160,42 @@ export class PageVenueDashboard extends LitElement {
           </tr>
         </thead>
         <tbody>
-          ${this.events.length === 0 ? html`<tr class="empty-row"><td colspan="6">No events yet — create one to get started.</td></tr>` :
-            this.events.map(ev => {
-              const tTypes = ev.ticketTypes ?? [];
-              const evSold = tTypes.reduce((s: number, tt: any) => s + tt.quantitySold, 0);
-              const evTotal = tTypes.reduce((s: number, tt: any) => s + tt.totalQuantity, 0);
-              const evRev = tTypes.reduce((s: number, tt: any) => s + tt.quantitySold * tt.price, 0);
-              const pct = evTotal ? Math.round(evSold / evTotal * 100) : 0;
-              return html`
-                <tr>
-                  <td><strong>${ev.name}</strong></td>
-                  <td>${new Date(ev.startsAt).toLocaleDateString()}</td>
-                  <td><span class="badge ${ev.isPublished ? 'badge-pub' : 'badge-draft'}">${ev.isPublished ? 'Published' : 'Draft'}</span></td>
-                  <td>
-                    ${evSold} / ${evTotal}
-                    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-                  </td>
-                  <td>$${evRev.toFixed(2)}</td>
-                  <td><button class="btn-ghost" @click=${() => navigate(`/venue/events/${ev.id}`)}>Manage</button></td>
-                </tr>
-              `;
-            })
+          ${this.events.length === 0
+            ? html`<tr class="empty-row"><td colspan="${this.isOwner ? 7 : 6}">No events yet — create one to get started.</td></tr>`
+            : this.events.map(ev => {
+                const tTypes = ev.ticketTypes ?? [];
+                const evSold = tTypes.reduce((s: number, tt: any) => s + tt.quantitySold, 0);
+                const evTotal = tTypes.reduce((s: number, tt: any) => s + tt.totalQuantity, 0);
+                const evRev = tTypes.reduce((s: number, tt: any) => s + tt.quantitySold * tt.price, 0);
+                const pct = evTotal ? Math.round(evSold / evTotal * 100) : 0;
+                return html`
+                  <tr>
+                    <td><strong>${ev.name}</strong></td>
+                    ${this.isOwner ? html`<td>${ev.venue?.name ?? '—'}</td>` : ''}
+                    <td>${new Date(ev.startsAt).toLocaleDateString()}</td>
+                    <td><span class="badge ${ev.isPublished ? 'badge-pub' : 'badge-draft'}">${ev.isPublished ? 'Published' : 'Draft'}</span></td>
+                    <td>
+                      ${evSold} / ${evTotal}
+                      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+                    </td>
+                    <td>$${evRev.toFixed(2)}</td>
+                    <td><button class="btn-ghost" @click=${() => navigate(`/venue/events/${ev.id}`)}>Manage</button></td>
+                  </tr>
+                `;
+              })
           }
         </tbody>
       </table>
+      ${this.totalPages > 1 ? html`
+        <div class="pagination">
+          <button class="page-btn" ?disabled=${this.page <= 1} @click=${() => this._loadPage(this.page - 1)}>‹</button>
+          ${Array.from({ length: this.totalPages }, (_, i) => i + 1).map(p => html`
+            <button class="page-btn ${p === this.page ? 'active' : ''}" @click=${() => this._loadPage(p)}>${p}</button>
+          `)}
+          <button class="page-btn" ?disabled=${this.page >= this.totalPages} @click=${() => this._loadPage(this.page + 1)}>›</button>
+        </div>
+      ` : ''}
     `;
   }
 }
+

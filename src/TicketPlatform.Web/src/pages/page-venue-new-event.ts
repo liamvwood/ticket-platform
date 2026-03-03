@@ -58,6 +58,8 @@ export class PageVenueNewEvent extends LitElement {
   @state() error = '';
   @state() ttAdded = 0;
   @state() ticketTypes: Array<{id: string; name: string; price: number; totalQuantity: number; maxPerOrder: number}> = [];
+  @state() thumbnailFile: File | null = null;
+  @state() thumbnailPreview = '';
   @state() venues: any[] = [];
   @state() showNewVenue = false;
   @state() newVenueName = '';
@@ -156,10 +158,24 @@ export class PageVenueNewEvent extends LitElement {
   private async _publish() {
     this.loading = true;
     try {
+      // Upload thumbnail first if selected
+      if (this.thumbnailFile) {
+        try { await api.uploadEventThumbnail(this.createdEventId, this.thumbnailFile); }
+        catch { /* non-fatal — event still publishes */ }
+      }
       await api.publishEvent(this.createdEventId);
       navigate('/venue');
     } catch (err: any) { this.error = err.message; }
     finally { this.loading = false; }
+  }
+
+  private _onThumbnailPick(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    this.thumbnailFile = file;
+    const reader = new FileReader();
+    reader.onload = () => { this.thumbnailPreview = reader.result as string; };
+    reader.readAsDataURL(file);
   }
 
   render() {
@@ -293,6 +309,19 @@ export class PageVenueNewEvent extends LitElement {
             ` : ''}
           </div>
         </form>
+        <!-- Thumbnail upload (optional) -->
+        <div class="card" style="margin-top:1.5rem">
+          <h2>Event Thumbnail <span style="color:#8888a8;font-weight:400;font-size:0.85rem">(optional)</span></h2>
+          <p style="color:#8888a8;font-size:0.85rem;margin-bottom:1rem">Upload a cover image that will appear on the event listing.</p>
+          ${this.thumbnailPreview ? html`
+            <img src=${this.thumbnailPreview} style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:1rem" />
+          ` : ''}
+          <label style="display:inline-block;background:#1e1e2e;border:1px dashed #3e3e5e;border-radius:8px;padding:0.75rem 1.25rem;cursor:pointer;font-size:0.9rem;color:#818cf8">
+            ${this.thumbnailFile ? `📷 ${this.thumbnailFile.name}` : '📷 Choose image…'}
+            <input type="file" accept="image/*" style="display:none" @change=${this._onThumbnailPick} />
+          </label>
+          <p style="color:#666;font-size:0.75rem;margin-top:0.5rem">Image will be uploaded when you publish the event.</p>
+        </div>
       `}
     `;
   }

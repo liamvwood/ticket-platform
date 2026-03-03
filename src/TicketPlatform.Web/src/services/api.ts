@@ -28,6 +28,20 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   return ct.includes('application/json') ? res.json() : (null as T);
 }
 
+// Raw fetch — no Content-Type preset (used for multipart/form-data)
+async function requestRaw(path: string, opts: RequestInit = {}): Promise<any> {
+  const token = localStorage.getItem('jwt');
+  const res = await fetch(`${API}${path}`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...opts.headers,
+    },
+    ...opts,
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json().catch(() => null);
+}
+
 export const api = {
   // Auth
   register: (email: string, password: string, phoneNumber: string) =>
@@ -45,12 +59,20 @@ export const api = {
     request<any>('/venues', { method: 'POST', body: JSON.stringify(data) }),
 
   // Events
-  getEvents: () => request<any[]>('/events'),
+  getEvents: (page = 1, pageSize = 12) => request<any>(`/events?page=${page}&pageSize=${pageSize}`),
+  getEventsAdmin: (page = 1, pageSize = 20) => request<any>(`/events/admin?page=${page}&pageSize=${pageSize}`),
   getEvent: (id: string) => request<any>(`/events/${id}`),
+  uploadEventThumbnail: (eventId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return requestRaw(`/events/${eventId}/thumbnail`, { method: 'POST', body: form });
+  },
   createEvent: (data: any) =>
     request<any>('/events', { method: 'POST', body: JSON.stringify(data) }),
   publishEvent: (id: string) =>
     request<void>(`/events/${id}/publish`, { method: 'PUT' }),
+  unpublishEvent: (id: string) =>
+    request<void>(`/events/${id}/unpublish`, { method: 'PUT' }),
   createTicketType: (eventId: string, data: any) =>
     request<any>(`/events/${eventId}/ticket-types`, { method: 'POST', body: JSON.stringify(data) }),
   deleteTicketType: (eventId: string, ticketTypeId: string) =>
