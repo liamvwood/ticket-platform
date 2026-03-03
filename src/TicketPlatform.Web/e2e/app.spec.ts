@@ -69,7 +69,7 @@ test.describe('Home page', () => {
   test('loads and shows hero', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('h1')).toContainText('Tickets');
-    await expect(page.locator('.eyebrow')).toContainText('Austin');
+    await expect(page.locator('.eyebrow')).toContainText('Ticket Platform');
     await expect(page.locator('.fee-pct.us')).toContainText('3%');
   });
 
