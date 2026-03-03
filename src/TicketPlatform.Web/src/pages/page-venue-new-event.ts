@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { api } from '../services/api.js';
-import { navigate } from '../services/auth.js';
+import { auth, navigate } from '../services/auth.js';
 
 @customElement('page-venue-new-event')
 export class PageVenueNewEvent extends LitElement {
@@ -14,9 +14,10 @@ export class PageVenueNewEvent extends LitElement {
     .card h2 { font-size: 1rem; font-weight: 700; color: #818cf8; margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: .05em; }
     .field { margin-bottom: 1.25rem; }
     label { display: block; font-size: 0.85rem; font-weight: 600; color: #ccc; margin-bottom: .4rem; }
-    input, textarea { width: 100%; background: #22222f; border: 1px solid #2e2e3e; color: #f0f0f8; border-radius: 8px; padding: .7rem 1rem; font-size: .95rem; box-sizing: border-box; font-family: inherit; transition: border-color .2s; }
-    input:focus, textarea:focus { outline: none; border-color: #6c63ff; }
+    input, textarea, select { width: 100%; background: #22222f; border: 1px solid #2e2e3e; color: #f0f0f8; border-radius: 8px; padding: .7rem 1rem; font-size: .95rem; box-sizing: border-box; font-family: inherit; transition: border-color .2s; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #6c63ff; }
     textarea { resize: vertical; min-height: 80px; }
+    select option { background: #22222f; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     .btn {
       background: #6c63ff; color: #fff; padding: .8rem 2rem;
@@ -34,6 +35,7 @@ export class PageVenueNewEvent extends LitElement {
     .step.inactive { background: #1e1e2e; color: #8888a8; }
     @media (max-width: 640px) {
       :host { padding: 1rem; }
+      .row { grid-template-columns: 1fr; }
     }
   `;
 
@@ -42,6 +44,7 @@ export class PageVenueNewEvent extends LitElement {
   @state() loading = false;
   @state() error = '';
   @state() ttAdded = 0;
+  @state() venues: any[] = [];
 
   // Event fields
   @state() name = '';
@@ -49,7 +52,7 @@ export class PageVenueNewEvent extends LitElement {
   @state() startsAt = '';
   @state() endsAt = '';
   @state() saleStartsAt = '';
-  @state() venueId = '00000000-0000-0000-0000-000000000001'; // placeholder
+  @state() venueId = '';
 
   // Ticket type fields
   @state() ttName = 'General Admission';
@@ -57,8 +60,22 @@ export class PageVenueNewEvent extends LitElement {
   @state() ttQty = '200';
   @state() ttMax = '4';
 
+  async connectedCallback() {
+    super.connectedCallback();
+    if (auth.role === 'AppOwner') {
+      try {
+        this.venues = await api.getVenues();
+        if (this.venues.length > 0) this.venueId = this.venues[0].id;
+      } catch {}
+    } else {
+      // VenueAdmin: use the seeded/default venue
+      this.venueId = '00000000-0000-0000-0000-000000000001';
+    }
+  }
+
   private async _createEvent(e: Event) {
     e.preventDefault();
+    if (!this.venueId) { this.error = 'Please select a venue.'; return; }
     this.loading = true; this.error = '';
     try {
       const ev = await api.createEvent({
@@ -99,6 +116,7 @@ export class PageVenueNewEvent extends LitElement {
   }
 
   render() {
+    const isOwner = auth.role === 'AppOwner';
     return html`
       <div class="back" @click=${() => navigate('/venue')}>← Back to Portal</div>
       <h1>Create New Event</h1>
@@ -114,6 +132,16 @@ export class PageVenueNewEvent extends LitElement {
         <form @submit=${this._createEvent}>
           <div class="card">
             <h2>Event Details</h2>
+            ${isOwner ? html`
+              <div class="field">
+                <label>Venue</label>
+                <select .value=${this.venueId} @change=${(e: any) => this.venueId = e.target.value}>
+                  ${this.venues.length === 0
+                    ? html`<option value="">No venues yet — invite a venue admin first</option>`
+                    : this.venues.map(v => html`<option value=${v.id}>${v.name}</option>`)}
+                </select>
+              </div>
+            ` : ''}
             <div class="field">
               <label>Event Name</label>
               <input type="text" .value=${this.name} @input=${(e: any) => this.name = e.target.value} required placeholder="Live at Stubb's" />

@@ -39,6 +39,9 @@ export const api = {
       method: 'POST', body: JSON.stringify({ email, password }),
     }),
 
+  // Venues
+  getVenues: () => request<any[]>('/venues'),
+
   // Events
   getEvents: () => request<any[]>('/events'),
   getEvent: (id: string) => request<any>(`/events/${id}`),

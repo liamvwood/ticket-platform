@@ -145,6 +145,7 @@ export class TpNav extends LitElement {
           ${this.loggedIn ? html`
             <a @click=${() => this._nav('/my-tickets')}>My Tickets</a>
             ${this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/venue')}>Venue Portal</a>` : ''}
+            ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/venue')}>Events</a>` : ''}
             ${this.role === 'Scanner' || this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/scan')}>Scanner</a>` : ''}
             ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/admin/invites')}>Admin</a>` : ''}
             <button class="btn btn-ghost" @click=${() => auth.logout()}>Logout</button>
@@ -162,6 +163,7 @@ export class TpNav extends LitElement {
         ${this.loggedIn ? html`
           <a @click=${() => this._nav('/my-tickets')}>My Tickets</a>
           ${this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/venue')}>Venue Portal</a>` : ''}
+          ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/venue')}>Events</a>` : ''}
           ${this.role === 'Scanner' || this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/scan')}>Scanner</a>` : ''}
           ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/admin/invites')}>Admin</a>` : ''}
           <button class="btn btn-ghost" @click=${() => auth.logout()}>Logout</button>

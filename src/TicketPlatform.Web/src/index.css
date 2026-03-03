@@ -17,7 +17,7 @@
   --font: 'Inter', system-ui, -apple-system, sans-serif;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { background: var(--color-bg); color: var(--color-text); font-family: var(--font); min-height: 100vh; line-height: 1.6; }
+html, body { background: var(--color-bg); color: var(--color-text); font-family: var(--font); min-height: 100vh; line-height: 1.6; overflow-x: hidden; }
 a { color: var(--color-primary); text-decoration: none; }
 a:hover { color: var(--color-primary-hover); }
 button { cursor: pointer; font-family: inherit; border: none; outline: none; }
