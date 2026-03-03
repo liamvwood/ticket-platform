@@ -72,7 +72,7 @@ test.describe('Home page', () => {
 
   test('Get Started CTA navigates to /register', async ({ page }) => {
     await page.goto('/');
-    await page.locator('button', { hasText: 'Get Started' }).click();
+    await page.locator('button', { hasText: 'Get Started' }).first().click();
     await expect(page).toHaveURL('/register');
   });
 });
@@ -101,8 +101,8 @@ test.describe('Authentication', () => {
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL('/events');
     // Logout via nav
-    await page.locator('button', { hasText: 'Logout' }).click();
-    await expect(page.locator('button', { hasText: 'Get Started' })).toBeVisible();
+    await page.locator('button', { hasText: 'Logout' }).first().click();
+    await expect(page.locator('button', { hasText: 'Get Started' }).first()).toBeVisible();
   });
 
   test('wrong password shows error', async ({ page }) => {
@@ -119,7 +119,7 @@ test.describe('Authentication', () => {
     await page.fill('input[type="password"]', USER_PASS);
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL('/events');
-    await expect(page.locator('button', { hasText: 'Logout' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Logout' }).first()).toBeVisible();
   });
 });
 
@@ -400,13 +400,13 @@ test.describe('Navigation', () => {
 
   test('nav Events link works', async ({ page }) => {
     await page.goto('/');
-    await page.locator('a', { hasText: 'Events' }).click();
+    await page.locator('a', { hasText: 'Events' }).first().click();
     await expect(page).toHaveURL('/events');
   });
 
   test('nav Login link works', async ({ page }) => {
     await page.goto('/');
-    await page.locator('a', { hasText: 'Login' }).click();
+    await page.locator('a', { hasText: 'Login' }).first().click();
     await expect(page).toHaveURL('/login');
   });
 });
