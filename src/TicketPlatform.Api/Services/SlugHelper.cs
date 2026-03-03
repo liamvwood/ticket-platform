@@ -16,7 +16,7 @@ public static class SlugHelper
     {
         // 8-char base36 code derived from userId
         const string chars = "0123456789abcdefghijklmnopqrstuvwxyz";
-        var bytes = userId.ToByteArray().Take(6).ToArray();
+        var bytes = userId.ToByteArray().Take(8).ToArray();
         return string.Concat(bytes.Select(b => chars[b % 36]));
     }
 }
