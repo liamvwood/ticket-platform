@@ -7,27 +7,27 @@ import { auth, navigate } from '../services/auth.js';
 export class PageVenueNewEvent extends LitElement {
   static styles = css`
     :host { display: block; padding: 2rem; max-width: 680px; margin: 0 auto; }
-    .back { color: #8888a8; cursor: pointer; font-size: 0.9rem; margin-bottom: 2rem; display: inline-flex; align-items: center; gap: .4rem; }
+    .back { color: #6b7a8d; cursor: pointer; font-size: 0.9rem; margin-bottom: 2rem; display: inline-flex; align-items: center; gap: .4rem; }
     .back:hover { color: #fff; }
     h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 2rem; }
-    .card { background: #1a1a24; border: 1px solid #2e2e3e; border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; }
-    .card h2 { font-size: 1rem; font-weight: 700; color: #818cf8; margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: .05em; }
+    .card { background: #111820; border: 1px solid #1e2836; border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; }
+    .card h2 { font-size: 1rem; font-weight: 700; color: #00FF88; margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: .05em; }
     .field { margin-bottom: 1.25rem; }
     label { display: block; font-size: 0.85rem; font-weight: 600; color: #ccc; margin-bottom: .4rem; }
-    input, textarea, select { width: 100%; background: #22222f; border: 1px solid #2e2e3e; color: #f0f0f8; border-radius: 8px; padding: .7rem 1rem; font-size: .95rem; box-sizing: border-box; font-family: inherit; transition: border-color .2s; }
-    input:focus, textarea:focus, select:focus { outline: none; border-color: #6c63ff; }
+    input, textarea, select { width: 100%; background: #0d1319; border: 1px solid #1e2836; color: #f0f0f8; border-radius: 8px; padding: .7rem 1rem; font-size: .95rem; box-sizing: border-box; font-family: inherit; transition: border-color .2s; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: #00FF88; }
     textarea { resize: vertical; min-height: 80px; }
-    select option { background: #22222f; }
+    select option { background: #0d1319; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     .btn {
-      background: #6c63ff; color: #fff; padding: .8rem 2rem;
+      background: #00FF88; color: #0b0f14; padding: .8rem 2rem;
       border-radius: 10px; font-weight: 700; font-size: 1rem;
       cursor: pointer; border: none; font-family: inherit; transition: background .2s;
     }
-    .btn:hover:not(:disabled) { background: #5a52e0; }
+    .btn:hover:not(:disabled) { background: #00d474; }
     .btn:disabled { opacity: .4; cursor: not-allowed; }
     .btn-ghost {
-      background: transparent; border: 1px solid #2e2e3e; color: #ccc;
+      background: transparent; border: 1px solid #1e2836; color: #ccc;
       padding: .8rem 2rem; border-radius: 10px; font-weight: 600; font-size: 1rem;
       cursor: pointer; font-family: inherit; transition: all .2s;
     }
@@ -37,24 +37,24 @@ export class PageVenueNewEvent extends LitElement {
     /* Ticket type list */
     .tt-list { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1.5rem; }
     .tt-item {
-      background: #13131c; border: 1px solid #2e2e3e; border-radius: 10px;
+      background: #0b0f14; border: 1px solid #1e2836; border-radius: 10px;
       padding: 1rem 1.25rem; display: flex; align-items: center;
       justify-content: space-between; gap: 1rem;
     }
     .tt-item-info { flex: 1; min-width: 0; }
     .tt-item-name { font-weight: 700; font-size: .95rem; margin-bottom: .2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .tt-item-meta { font-size: .8rem; color: #8888a8; }
+    .tt-item-meta { font-size: .8rem; color: #6b7a8d; }
     .tt-item-price { font-size: 1.1rem; font-weight: 800; color: #22c55e; white-space: nowrap; }
     .tt-remove { background: none; border: none; color: #555568; cursor: pointer; padding: .25rem; border-radius: 4px; line-height: 1; font-size: 1.1rem; }
     .tt-remove:hover { color: #ef4444; background: #1e0a0a; }
     .tt-edit { background: none; border: none; color: #555568; cursor: pointer; padding: .25rem; border-radius: 4px; line-height: 1; font-size: 1.1rem; }
-    .tt-edit:hover { color: #818cf8; background: #1e1e3e; }
-    .tt-item-editing { border-color: #6c63ff; background: #1a1a30; }
+    .tt-edit:hover { color: #00FF88; background: #1e1e3e; }
+    .tt-item-editing { border-color: #00FF88; background: #1a1a30; }
     .step-indicator { display: flex; gap: 1rem; margin-bottom: 2rem; }
     .step { padding: .4rem 1rem; border-radius: 999px; font-size: .8rem; font-weight: 600; }
-    .step.active { background: #1e1b4b; color: #818cf8; border: 1px solid #3730a3; }
+    .step.active { background: #0d1a15; color: #00FF88; border: 1px solid #1e2836; }
     .step.done { background: #14532d; color: #22c55e; }
-    .step.inactive { background: #1e1e2e; color: #8888a8; }
+    .step.inactive { background: #1e1e2e; color: #6b7a8d; }
     @media (max-width: 640px) {
       :host { padding: 1rem; }
       .row { grid-template-columns: 1fr; }
@@ -237,7 +237,7 @@ export class PageVenueNewEvent extends LitElement {
                     </div>
                     <div style="display:flex;gap:.5rem">
                       <button class="btn" type="submit" ?disabled=${this.loading} style="flex:1">Save Venue</button>
-                      <button class="btn" type="button" style="background:#2e2e3e;flex:0 0 auto"
+                      <button class="btn" type="button" style="background:#1e2836;flex:0 0 auto"
                         @click=${() => this.showNewVenue = false}>Cancel</button>
                     </div>
                   </form>
@@ -248,7 +248,7 @@ export class PageVenueNewEvent extends LitElement {
                       : this.venues.map(v => html`<option value=${v.id}>${v.name}</option>`)}
                   </select>
                   <div style="margin-top:.5rem">
-                    <span style="font-size:.8rem;color:#6c63ff;cursor:pointer" @click=${() => this.showNewVenue = true}>
+                    <span style="font-size:.8rem;color:#00FF88;cursor:pointer" @click=${() => this.showNewVenue = true}>
                       + Create new venue
                     </span>
                   </div>
@@ -343,12 +343,12 @@ export class PageVenueNewEvent extends LitElement {
         </form>
         <!-- Thumbnail upload (optional) -->
         <div class="card" style="margin-top:1.5rem">
-          <h2>Event Thumbnail <span style="color:#8888a8;font-weight:400;font-size:0.85rem">(optional)</span></h2>
-          <p style="color:#8888a8;font-size:0.85rem;margin-bottom:1rem">Upload a cover image that will appear on the event listing.</p>
+          <h2>Event Thumbnail <span style="color:#6b7a8d;font-weight:400;font-size:0.85rem">(optional)</span></h2>
+          <p style="color:#6b7a8d;font-size:0.85rem;margin-bottom:1rem">Upload a cover image that will appear on the event listing.</p>
           ${this.thumbnailPreview ? html`
             <img src=${this.thumbnailPreview} style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:1rem" />
           ` : ''}
-          <label style="display:inline-block;background:#1e1e2e;border:1px dashed #3e3e5e;border-radius:8px;padding:0.75rem 1.25rem;cursor:pointer;font-size:0.9rem;color:#818cf8">
+          <label style="display:inline-block;background:#1e1e2e;border:1px dashed #3e3e5e;border-radius:8px;padding:0.75rem 1.25rem;cursor:pointer;font-size:0.9rem;color:#00FF88">
             ${this.thumbnailFile ? `📷 ${this.thumbnailFile.name}` : '📷 Choose image…'}
             <input type="file" accept="image/*" style="display:none" @change=${this._onThumbnailPick} />
           </label>

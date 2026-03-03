@@ -17,19 +17,19 @@ export class PageVenueDashboard extends LitElement {
   static styles = css`
     :host { display: block; padding: 2rem; max-width: 1100px; margin: 0 auto; }
     h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; }
-    .sub { color: #8888a8; margin-bottom: 2.5rem; }
+    .sub { color: #6b7a8d; margin-bottom: 2.5rem; }
     .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 3rem; }
-    .stat-card { background: #1a1a24; border: 1px solid #2e2e3e; border-radius: 12px; padding: 1.5rem; }
-    .stat-label { font-size: 0.8rem; color: #8888a8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
+    .stat-card { background: #111820; border: 1px solid #1e2836; border-radius: 12px; padding: 1.5rem; }
+    .stat-label { font-size: 0.8rem; color: #6b7a8d; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
     .stat-val { font-size: 2rem; font-weight: 900; }
     .stat-val.green { color: #22c55e; }
-    .stat-val.purple { color: #818cf8; }
+    .stat-val.purple { color: #00FF88; }
     .stat-val.orange { color: #f59e0b; }
     .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
     .section-header h2 { font-size: 1.3rem; font-weight: 700; }
     .btn {
-      background: #6c63ff;
-      color: #fff;
+      background: #00FF88;
+      color: #0b0f14;
       padding: 0.55rem 1.2rem;
       border-radius: 8px;
       font-weight: 700;
@@ -39,10 +39,10 @@ export class PageVenueDashboard extends LitElement {
       font-family: inherit;
       transition: background 0.2s;
     }
-    .btn:hover { background: #5a52e0; }
+    .btn:hover { background: #00d474; }
     .btn-ghost {
       background: transparent;
-      border: 1px solid #2e2e3e;
+      border: 1px solid #1e2836;
       color: #ccc;
       padding: 0.45rem 1rem;
       border-radius: 8px;
@@ -53,20 +53,20 @@ export class PageVenueDashboard extends LitElement {
     .btn-ghost:hover { border-color: #555; color: #fff; }
     .owner-badge { background: #78350f22; color: #f59e0b; border: 1px solid #78350f; border-radius: 6px; padding: 0.2rem 0.7rem; font-size: 0.75rem; font-weight: 700; }
     table { width: 100%; border-collapse: collapse; }
-    thead th { text-align: left; font-size: 0.8rem; color: #8888a8; padding: 0.75rem 1rem; border-bottom: 1px solid #2e2e3e; text-transform: uppercase; letter-spacing: 0.05em; }
+    thead th { text-align: left; font-size: 0.8rem; color: #6b7a8d; padding: 0.75rem 1rem; border-bottom: 1px solid #1e2836; text-transform: uppercase; letter-spacing: 0.05em; }
     tbody td { padding: 1rem; border-bottom: 1px solid #1e1e2e; font-size: 0.9rem; }
     tbody tr:hover td { background: #1e1e2e; }
     .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
     .badge-pub { background: #14532d; color: #22c55e; }
-    .badge-draft { background: #1e1e2e; color: #8888a8; }
-    .progress-bar { background: #2e2e3e; border-radius: 999px; height: 6px; margin-top: 4px; }
-    .progress-fill { background: #6c63ff; border-radius: 999px; height: 6px; }
-    .loading { text-align: center; padding: 5rem; color: #8888a8; }
-    .empty-row td { text-align: center; color: #8888a8; padding: 3rem; }
+    .badge-draft { background: #1e1e2e; color: #6b7a8d; }
+    .progress-bar { background: #1e2836; border-radius: 999px; height: 6px; margin-top: 4px; }
+    .progress-fill { background: #00FF88; border-radius: 999px; height: 6px; }
+    .loading { text-align: center; padding: 5rem; color: #6b7a8d; }
+    .empty-row td { text-align: center; color: #6b7a8d; padding: 3rem; }
     .pagination { display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; justify-content: center; }
-    .page-btn { background: #1a1a24; border: 1px solid #2e2e3e; color: #ccc; padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
-    .page-btn:hover:not(:disabled) { border-color: #6c63ff; color: #818cf8; }
-    .page-btn.active { background: #6c63ff; border-color: #6c63ff; color: #fff; font-weight: 700; }
+    .page-btn { background: #111820; border: 1px solid #1e2836; color: #ccc; padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-family: inherit; }
+    .page-btn:hover:not(:disabled) { border-color: #00FF88; color: #00FF88; }
+    .page-btn.active { background: #00FF88; border-color: #00FF88; color: #0b0f14; font-weight: 700; }
     .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     @media (max-width: 640px) {
       :host { padding: 1rem; }

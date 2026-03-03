@@ -12,10 +12,10 @@ export class PageScanner extends LitElement {
   static styles = css`
     :host { display: block; padding: 2rem; max-width: 560px; margin: 0 auto; }
     h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem; }
-    .sub { color: #8888a8; margin-bottom: 2rem; }
+    .sub { color: #6b7a8d; margin-bottom: 2rem; }
     .scanner-box {
-      background: #1a1a24;
-      border: 1px solid #2e2e3e;
+      background: #111820;
+      border: 1px solid #1e2836;
       border-radius: 16px;
       padding: 2rem;
       text-align: center;
@@ -27,8 +27,8 @@ export class PageScanner extends LitElement {
       margin-bottom: 1.5rem;
     }
     .btn {
-      background: #6c63ff;
-      color: #fff;
+      background: #00FF88;
+      color: #0b0f14;
       padding: 0.75rem 2rem;
       border-radius: 10px;
       font-weight: 700;
@@ -38,7 +38,7 @@ export class PageScanner extends LitElement {
       font-family: inherit;
       transition: background 0.2s;
     }
-    .btn:hover:not(:disabled) { background: #5a52e0; }
+    .btn:hover:not(:disabled) { background: #00d474; }
     .btn-stop { background: #374151; }
     .btn-stop:hover { background: #4b5563; }
     .result {
@@ -52,7 +52,7 @@ export class PageScanner extends LitElement {
     .result.Invalid  { background: #450a0a; border: 1px solid #ef4444; }
     .result.Refunded { background: #1e1e2e; border: 1px solid #6b7280; }
     .result-icon { margin-bottom: 0.5rem; display: flex; justify-content: center; }
-    .result-icon.Valid    { color: #4ade80; }
+    .result-icon.Valid    { color: #00FF88; }
     .result-icon.Duplicate{ color: #f59e0b; }
     .result-icon.Invalid  { color: #ef4444; }
     .result-icon.Refunded { color: #9ca3af; }
@@ -60,10 +60,10 @@ export class PageScanner extends LitElement {
     .result-msg { font-size: 0.9rem; color: #aaa; }
     .result-detail { margin-top: 0.75rem; font-size: 0.85rem; color: #ccc; }
     .manual { margin-top: 1.5rem; }
-    .manual h3 { font-size: 0.9rem; font-weight: 700; color: #8888a8; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: .05em; }
+    .manual h3 { font-size: 0.9rem; font-weight: 700; color: #6b7a8d; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: .05em; }
     .manual-row { display: flex; gap: .75rem; }
-    input { background: #22222f; border: 1px solid #2e2e3e; color: #f0f0f8; border-radius: 8px; padding: .65rem 1rem; font-size: .9rem; flex: 1; font-family: inherit; box-sizing: border-box; }
-    input:focus { outline: none; border-color: #6c63ff; }
+    input { background: #0d1319; border: 1px solid #1e2836; color: #f0f0f8; border-radius: 8px; padding: .65rem 1rem; font-size: .9rem; flex: 1; font-family: inherit; box-sizing: border-box; }
+    input:focus { outline: none; border-color: #00FF88; }
     .auth-warn { background: #451a03; border: 1px solid #78350f; border-radius: 12px; padding: 2rem; text-align: center; color: #fbbf24; }
     .auth-warn h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: .5rem; }
     .auth-warn p { font-size: .9rem; color: #d97706; }

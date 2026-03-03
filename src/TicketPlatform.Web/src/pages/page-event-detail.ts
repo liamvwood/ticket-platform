@@ -9,46 +9,46 @@ type OtpStep = 'phone' | 'code' | 'done';
 export class PageEventDetail extends LitElement {
   static styles = css`
     :host { display: block; padding: 2rem; max-width: 900px; margin: 0 auto; }
-    .back { color: #8888a8; cursor: pointer; font-size: 0.9rem; margin-bottom: 1.5rem; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .back { color: #6b7a8d; cursor: pointer; font-size: 0.9rem; margin-bottom: 1.5rem; display: inline-flex; align-items: center; gap: 0.4rem; }
     .back:hover { color: #fff; }
     .header { margin-bottom: 2rem; }
     .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
     .header h1 { font-size: 2.2rem; font-weight: 900; margin-bottom: 0.5rem; }
-    .meta { display: flex; gap: 1.5rem; flex-wrap: wrap; color: #8888a8; font-size: 0.9rem; margin-bottom: 1rem; }
+    .meta { display: flex; gap: 1.5rem; flex-wrap: wrap; color: #6b7a8d; font-size: 0.9rem; margin-bottom: 1rem; }
     .meta span { display: flex; align-items: center; gap: 0.4rem; }
     .desc { color: #aaa; line-height: 1.8; margin-bottom: 2rem; }
     h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem; }
     .ticket-types { display: flex; flex-direction: column; gap: 1rem; }
     .tt-row {
-      background: #1a1a24; border: 1px solid #2e2e3e; border-radius: 12px;
+      background: #111820; border: 1px solid #1e2836; border-radius: 12px;
       padding: 1.25rem 1.5rem; display: flex; align-items: center;
       justify-content: space-between; gap: 1rem; flex-wrap: wrap;
     }
     .tt-info h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .tt-info p { font-size: 0.85rem; color: #8888a8; }
+    .tt-info p { font-size: 0.85rem; color: #6b7a8d; }
     .tt-right { display: flex; align-items: center; gap: 1.5rem; }
     .price { font-size: 1.4rem; font-weight: 800; color: #22c55e; }
-    .avail { font-size: 0.8rem; color: #8888a8; }
+    .avail { font-size: 0.8rem; color: #6b7a8d; }
     .qty-row { display: flex; align-items: center; gap: 0.5rem; }
-    .qty-btn { background: #2e2e3e; color: #fff; border: none; border-radius: 6px; width: 32px; height: 32px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .qty-btn { background: #1e2836; color: #fff; border: none; border-radius: 6px; width: 32px; height: 32px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .qty-btn:hover { background: #3e3e5e; }
     .qty { font-weight: 700; min-width: 24px; text-align: center; }
     .btn {
-      background: #6c63ff; color: #fff; padding: 0.6rem 1.4rem; border-radius: 8px;
+      background: #00FF88; color: #0b0f14; padding: 0.6rem 1.4rem; border-radius: 8px;
       font-weight: 700; font-size: 0.9rem; cursor: pointer; border: none;
       font-family: inherit; transition: background 0.2s; white-space: nowrap;
       max-width: 100%; overflow: hidden; text-overflow: ellipsis;
     }
-    .btn:hover { background: #5a52e0; }
+    .btn:hover { background: #00d474; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-ghost {
-      background: transparent; color: #8888a8; padding: 0.6rem 1rem; border-radius: 8px;
-      font-weight: 600; font-size: 0.9rem; cursor: pointer; border: 1px solid #2e2e3e;
+      background: transparent; color: #6b7a8d; padding: 0.6rem 1rem; border-radius: 8px;
+      font-weight: 600; font-size: 0.9rem; cursor: pointer; border: 1px solid #1e2836;
       font-family: inherit; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.4rem;
     }
-    .btn-ghost:hover { background: #2e2e3e; color: #fff; }
+    .btn-ghost:hover { background: #1e2836; color: #fff; }
     .sold-out { color: #ef4444; font-weight: 700; font-size: 0.9rem; }
-    .loading { text-align: center; padding: 5rem; color: #8888a8; }
+    .loading { text-align: center; padding: 5rem; color: #6b7a8d; }
     .error { background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 1rem; color: #fca5a5; }
     .toast {
       position: fixed; bottom: 2rem; right: 2rem;
@@ -58,7 +58,7 @@ export class PageEventDetail extends LitElement {
     }
     /* Share copied toast */
     .toast-copy {
-      background: #1a1a2e; border-color: #6c63ff; color: #a89cff;
+      background: #1a1a2e; border-color: #00FF88; color: #a89cff;
     }
     /* Modal overlay */
     .modal-overlay {
@@ -67,36 +67,36 @@ export class PageEventDetail extends LitElement {
       padding: 1rem;
     }
     .modal {
-      background: #12121c; border: 1px solid #2e2e3e; border-radius: 16px;
+      background: #12121c; border: 1px solid #1e2836; border-radius: 16px;
       padding: 2rem; width: 100%; max-width: 420px;
     }
     .modal h3 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.5rem; }
-    .modal p { color: #8888a8; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .modal p { color: #6b7a8d; font-size: 0.9rem; margin-bottom: 1.5rem; }
     .modal-actions { display: flex; flex-direction: column; gap: 0.75rem; }
     .modal-actions .btn { width: 100%; text-align: center; }
     .modal-actions .btn-ghost { width: 100%; text-align: center; justify-content: center; }
     .input-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
-    .input-group label { font-size: 0.85rem; color: #8888a8; }
+    .input-group label { font-size: 0.85rem; color: #6b7a8d; }
     .input-group input {
-      background: #1a1a24; border: 1px solid #2e2e3e; border-radius: 8px;
+      background: #111820; border: 1px solid #1e2836; border-radius: 8px;
       color: #fff; font-size: 1rem; padding: 0.75rem 1rem; font-family: inherit;
       width: 100%; box-sizing: border-box;
     }
-    .input-group input:focus { outline: none; border-color: #6c63ff; }
-    .otp-hint { font-size: 0.8rem; color: #8888a8; text-align: center; margin-top: 0.5rem; }
+    .input-group input:focus { outline: none; border-color: #00FF88; }
+    .otp-hint { font-size: 0.8rem; color: #6b7a8d; text-align: center; margin-top: 0.5rem; }
     .modal-error { color: #f87171; font-size: 0.85rem; margin-bottom: 1rem; }
     /* Platform fee selector */
-    .fee-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #2e2e3e; }
+    .fee-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #1e2836; }
     .fee-section h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .fee-section p { font-size: 0.8rem; color: #8888a8; margin-bottom: 0.75rem; }
+    .fee-section p { font-size: 0.8rem; color: #6b7a8d; margin-bottom: 0.75rem; }
     .fee-options { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .fee-btn {
-      background: #1a1a24; border: 1px solid #2e2e3e; border-radius: 8px;
+      background: #111820; border: 1px solid #1e2836; border-radius: 8px;
       color: #aaa; font-size: 0.9rem; font-weight: 600; padding: 0.4rem 0.9rem;
       cursor: pointer; font-family: inherit; transition: all 0.15s;
     }
-    .fee-btn.selected { background: #1e1e3e; border-color: #6c63ff; color: #a89cff; }
-    .fee-btn:hover { border-color: #6c63ff; color: #fff; }
+    .fee-btn.selected { background: #1e1e3e; border-color: #00FF88; color: #a89cff; }
+    .fee-btn:hover { border-color: #00FF88; color: #fff; }
     .fee-note { font-size: 0.75rem; color: #555568; margin-top: 0.5rem; }
     /* Referral banner */
     .ref-banner {

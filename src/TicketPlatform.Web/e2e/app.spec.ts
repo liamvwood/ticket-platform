@@ -68,20 +68,19 @@ async function getToken(email: string, pass: string): Promise<string> {
 test.describe('Home page', () => {
   test('loads and shows hero', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('h1')).toContainText('Tickets');
-    await expect(page.locator('.eyebrow')).toContainText('Ticket Platform');
+    await expect(page.locator('h1')).toContainText('Precision');
     await expect(page.locator('.fee-pct.us')).toContainText('3%');
   });
 
-  test('Browse Events CTA navigates to /events', async ({ page }) => {
+  test('Find Tickets CTA navigates to /events', async ({ page }) => {
     await page.goto('/');
-    await page.locator('button', { hasText: 'Browse Events' }).click();
+    await page.locator('button', { hasText: 'Find Tickets' }).click();
     await expect(page).toHaveURL('/events');
   });
 
   test('Get Started CTA navigates to /register', async ({ page }) => {
     await page.goto('/');
-    await page.locator('button', { hasText: 'Get Started' }).first().click();
+    await page.locator('button', { hasText: 'Launch Your Event' }).first().click();
     await expect(page).toHaveURL('/register');
   });
 });

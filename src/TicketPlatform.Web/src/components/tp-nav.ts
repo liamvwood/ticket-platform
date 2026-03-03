@@ -8,8 +8,8 @@ export class TpNav extends LitElement {
   static styles = css`
     :host { display: block; }
     nav {
-      background: #13131c;
-      border-bottom: 1px solid #2e2e3e;
+      background: #0b0f14;
+      border-bottom: 1px solid #1e2836;
       padding: 0 2rem;
       display: flex;
       align-items: center;
@@ -22,13 +22,13 @@ export class TpNav extends LitElement {
     .brand {
       font-size: 1.2rem;
       font-weight: 800;
-      color: #6c63ff;
+      color: #00FF88;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 0.5rem;
     }
-    .brand svg { color: #6c63ff; }
+    .brand svg { color: #00FF88; }
     .links { display: flex; align-items: center; gap: 1.5rem; }
     .links a {
       color: #aaa;
@@ -42,21 +42,21 @@ export class TpNav extends LitElement {
     }
     .links a:hover { color: #fff; }
     .btn {
-      background: #6c63ff;
-      color: #fff;
+      background: #00FF88;
+      color: #0b0f14;
       border-radius: 6px;
       padding: 0.4rem 1rem;
       font-size: 0.85rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       border: none;
       font-family: inherit;
       transition: background 0.2s;
     }
-    .btn:hover { background: #5a52e0; }
+    .btn:hover { background: #00d474; }
     .btn-ghost {
       background: transparent;
-      border: 1px solid #2e2e3e;
+      border: 1px solid #1e2836;
       color: #ccc;
     }
     .btn-ghost:hover { border-color: #666; color: #fff; }
@@ -84,8 +84,8 @@ export class TpNav extends LitElement {
     .drawer {
       display: none;
       flex-direction: column;
-      background: #13131c;
-      border-bottom: 1px solid #2e2e3e;
+      background: #0b0f14;
+      border-bottom: 1px solid #1e2836;
       padding: 1rem 1.5rem;
       gap: 0.75rem;
     }

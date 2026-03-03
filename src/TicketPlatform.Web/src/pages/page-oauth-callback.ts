@@ -13,12 +13,12 @@ export class PageOAuthCallback extends LitElement {
       min-height: 60vh;
       flex-direction: column;
       gap: 1rem;
-      color: #8888a8;
+      color: #6b7a8d;
     }
     .spinner {
       width: 40px; height: 40px;
-      border: 3px solid #2e2e3e;
-      border-top-color: #6c63ff;
+      border: 3px solid #1e2836;
+      border-top-color: #00FF88;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }

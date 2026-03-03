@@ -20,7 +20,7 @@ export class PageEvents extends LitElement {
   static styles = css`
     :host { display: block; padding: 2rem; max-width: 1100px; margin: 0 auto; }
     h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; }
-    .subtitle { color: #8888a8; margin-bottom: 2rem; }
+    .subtitle { color: #6b7a8d; margin-bottom: 2rem; }
 
     /* Center-justify grid items including the last (partial) row */
     .grid {
@@ -30,8 +30,8 @@ export class PageEvents extends LitElement {
       justify-content: center;
     }
     .event-card {
-      background: #1a1a24;
-      border: 1px solid #2e2e3e;
+      background: #111820;
+      border: 1px solid #1e2836;
       border-radius: 14px;
       overflow: hidden;
       transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
@@ -40,7 +40,7 @@ export class PageEvents extends LitElement {
       flex-shrink: 0;
     }
     .event-card:hover {
-      border-color: #6c63ff;
+      border-color: #00FF88;
       transform: translateY(-3px);
       box-shadow: 0 12px 32px #0004;
     }
@@ -56,20 +56,20 @@ export class PageEvents extends LitElement {
       height: 100%;
       object-fit: cover;
     }
-    .thumb-music { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
+    .thumb-music { background: linear-gradient(135deg, #0d1a15 0%, #312e81 100%); }
     .thumb-mic   { background: linear-gradient(135deg, #4a044e 0%, #831843 100%); }
     .thumb-star  { background: linear-gradient(135deg, #451a03 0%, #78350f 100%); }
-    .thumb-default { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
+    .thumb-default { background: linear-gradient(135deg, #0d1a15 0%, #312e81 100%); }
     .event-body { padding: 1.25rem; }
     .event-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; line-height: 1.3; }
-    .event-meta-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: #8888a8; margin-bottom: 0.4rem; }
+    .event-meta-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: #6b7a8d; margin-bottom: 0.4rem; }
     .event-meta-row svg { flex-shrink: 0; }
     .event-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; }
-    .event-price { font-size: 1rem; font-weight: 800; color: #4ade80; }
+    .event-price { font-size: 1rem; font-weight: 800; color: #00FF88; }
     .btn-tickets {
-      background: #6c63ff22;
-      color: #818cf8;
-      border: 1px solid #3730a344;
+      background: #00FF8811;
+      color: #00FF88;
+      border: 1px solid #00FF8833;
       border-radius: 6px;
       padding: 0.3rem 0.8rem;
       font-size: 0.8rem;
@@ -78,15 +78,15 @@ export class PageEvents extends LitElement {
       font-family: inherit;
       transition: all 0.2s;
     }
-    .btn-tickets:hover { background: #6c63ff44; border-color: #6c63ff; }
-    .empty { text-align: center; padding: 5rem; color: #8888a8; }
-    .loading { text-align: center; padding: 5rem; color: #8888a8; }
+    .btn-tickets:hover { background: #00FF8822; border-color: #00FF88; }
+    .empty { text-align: center; padding: 5rem; color: #6b7a8d; }
+    .loading { text-align: center; padding: 5rem; color: #6b7a8d; }
     .api-banner {
       background: #1e1e2e;
-      border: 1px solid #2e2e3e;
+      border: 1px solid #1e2836;
       border-radius: 8px;
       padding: 0.75rem 1rem;
-      color: #8888a8;
+      color: #6b7a8d;
       font-size: 0.85rem;
       margin-bottom: 1.5rem;
       display: flex;
@@ -104,8 +104,8 @@ export class PageEvents extends LitElement {
       margin-top: 2.5rem;
     }
     .page-btn {
-      background: #1a1a24;
-      border: 1px solid #2e2e3e;
+      background: #111820;
+      border: 1px solid #1e2836;
       color: #ccc;
       padding: 0.45rem 0.9rem;
       border-radius: 8px;
@@ -116,10 +116,10 @@ export class PageEvents extends LitElement {
       min-width: 2.5rem;
       text-align: center;
     }
-    .page-btn:hover:not(:disabled) { border-color: #6c63ff; color: #818cf8; }
-    .page-btn.active { background: #6c63ff; border-color: #6c63ff; color: #fff; font-weight: 700; }
+    .page-btn:hover:not(:disabled) { border-color: #00FF88; color: #00FF88; }
+    .page-btn.active { background: #00FF88; border-color: #00FF88; color: #fff; font-weight: 700; }
     .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-    .page-info { color: #8888a8; font-size: 0.85rem; padding: 0 0.5rem; }
+    .page-info { color: #6b7a8d; font-size: 0.85rem; padding: 0 0.5rem; }
 
     @media (max-width: 640px) {
       :host { padding: 1.25rem; }

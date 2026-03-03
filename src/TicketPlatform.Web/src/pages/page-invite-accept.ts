@@ -10,29 +10,29 @@ export class PageInviteAccept extends LitElement {
   static styles = css`
     :host { display: flex; align-items: center; justify-content: center; min-height: 80vh; padding: 2rem; }
     .box {
-      background: #1a1a24;
-      border: 1px solid #2e2e3e;
+      background: #111820;
+      border: 1px solid #1e2836;
       border-radius: 16px;
       padding: 2.5rem;
       width: 100%;
       max-width: 440px;
     }
-    .logo { text-align: center; margin-bottom: 0.5rem; color: #6c63ff; display: flex; justify-content: center; }
+    .logo { text-align: center; margin-bottom: 0.5rem; color: #00FF88; display: flex; justify-content: center; }
     h1 { text-align: center; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.25rem; }
-    .venue-name { text-align: center; color: #6c63ff; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .sub { text-align: center; color: #8888a8; font-size: 0.9rem; margin-bottom: 2rem; }
+    .venue-name { text-align: center; color: #00FF88; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .sub { text-align: center; color: #6b7a8d; font-size: 0.9rem; margin-bottom: 2rem; }
     .field { margin-bottom: 1.1rem; }
     label { display: block; font-size: 0.85rem; font-weight: 600; color: #ccc; margin-bottom: 0.35rem; }
-    input { width: 100%; background: #22222f; border: 1px solid #2e2e3e; color: #f0f0f8; border-radius: 8px; padding: 0.7rem 1rem; font-size: 0.95rem; box-sizing: border-box; font-family: inherit; transition: border-color 0.2s; }
-    input:focus { outline: none; border-color: #6c63ff; }
+    input { width: 100%; background: #0d1319; border: 1px solid #1e2836; color: #f0f0f8; border-radius: 8px; padding: 0.7rem 1rem; font-size: 0.95rem; box-sizing: border-box; font-family: inherit; transition: border-color 0.2s; }
+    input:focus { outline: none; border-color: #00FF88; }
     input:read-only { opacity: 0.7; cursor: default; }
-    .btn { width: 100%; background: #6c63ff; color: #fff; padding: 0.8rem; border-radius: 10px; font-weight: 700; font-size: 1rem; cursor: pointer; border: none; font-family: inherit; transition: background 0.2s; margin-top: 0.5rem; }
-    .btn:hover:not(:disabled) { background: #5a52e0; }
+    .btn { width: 100%; background: #00FF88; color: #fff; padding: 0.8rem; border-radius: 10px; font-weight: 700; font-size: 1rem; cursor: pointer; border: none; font-family: inherit; transition: background 0.2s; margin-top: 0.5rem; }
+    .btn:hover:not(:disabled) { background: #00d474; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .error { background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 0.75rem 1rem; color: #fca5a5; font-size: 0.9rem; margin-bottom: 1rem; }
     .info { background: #0f1f3d; border: 1px solid #1e3a5f; border-radius: 8px; padding: 0.75rem 1rem; color: #93c5fd; font-size: 0.9rem; margin-bottom: 1.25rem; }
-    .spinner { text-align: center; color: #8888a8; padding: 4rem; }
-    .expired { text-align: center; padding: 3rem 1rem; color: #8888a8; }
+    .spinner { text-align: center; color: #6b7a8d; padding: 4rem; }
+    .expired { text-align: center; padding: 3rem 1rem; color: #6b7a8d; }
     .expired h2 { color: #fca5a5; margin-bottom: 0.5rem; }
     .hint { font-size: 0.8rem; color: #555570; margin-top: 0.3rem; }
     .expiry { font-size: 0.8rem; color: #555570; text-align: right; margin-top: 0.35rem; }

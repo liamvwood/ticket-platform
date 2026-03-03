@@ -40,24 +40,24 @@ export class PageAuth extends LitElement {
   static styles = css`
     :host { display: flex; align-items: center; justify-content: center; min-height: 80vh; padding: 2rem; }
     .box {
-      background: #1a1a24;
-      border: 1px solid #2e2e3e;
+      background: #111820;
+      border: 1px solid #1e2836;
       border-radius: 16px;
       padding: 2.5rem;
       width: 100%;
       max-width: 420px;
     }
-    .logo { text-align: center; margin-bottom: 0.5rem; color: #6c63ff; display: flex; justify-content: center; }
+    .logo { text-align: center; margin-bottom: 0.5rem; color: #00FF88; display: flex; justify-content: center; }
     h1 { text-align: center; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
-    .sub { text-align: center; color: #8888a8; font-size: 0.9rem; margin-bottom: 2rem; }
+    .sub { text-align: center; color: #6b7a8d; font-size: 0.9rem; margin-bottom: 2rem; }
     .field { margin-bottom: 1.25rem; }
     label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; color: #ccc; }
-    input { width: 100%; background: #22222f; border: 1px solid #2e2e3e; color: #f0f0f8; border-radius: 8px; padding: 0.7rem 1rem; font-size: 0.95rem; transition: border-color 0.2s; box-sizing: border-box; font-family: inherit; }
-    input:focus { outline: none; border-color: #6c63ff; }
+    input { width: 100%; background: #0d1319; border: 1px solid #1e2836; color: #f0f0f8; border-radius: 8px; padding: 0.7rem 1rem; font-size: 0.95rem; transition: border-color 0.2s; box-sizing: border-box; font-family: inherit; }
+    input:focus { outline: none; border-color: #00FF88; }
     .btn {
       width: 100%;
-      background: #6c63ff;
-      color: #fff;
+      background: #00FF88;
+      color: #0b0f14;
       padding: 0.8rem;
       border-radius: 10px;
       font-weight: 700;
@@ -68,16 +68,16 @@ export class PageAuth extends LitElement {
       transition: background 0.2s;
       margin-top: 0.5rem;
     }
-    .btn:hover:not(:disabled) { background: #5a52e0; }
+    .btn:hover:not(:disabled) { background: #00d474; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .error { background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 0.75rem 1rem; color: #fca5a5; font-size: 0.9rem; margin-bottom: 1rem; }
     .invite-notice { background: #0c1f3d; border: 1px solid #1e3a5f; border-radius: 8px; padding: 1rem; color: #93c5fd; font-size: 0.9rem; margin-bottom: 1rem; }
     .invite-notice strong { display: block; margin-bottom: 0.35rem; }
-    .switch { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #8888a8; }
-    .switch a { color: #818cf8; cursor: pointer; }
-    .switch a:hover { color: #a5b4fc; }
+    .switch { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #6b7a8d; }
+    .switch a { color: #00FF88; cursor: pointer; }
+    .switch a:hover { color: #9cc4b2; }
     .divider { display: flex; align-items: center; gap: 0.75rem; margin: 1.5rem 0; color: #555570; font-size: 0.82rem; }
-    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #2e2e3e; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #1e2836; }
     .oauth-btn {
       width: 100%;
       display: flex;

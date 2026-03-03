@@ -15,39 +15,27 @@ export class PageHome extends LitElement {
       justify-content: center;
       text-align: center;
       padding: 2rem;
-      background: radial-gradient(ellipse 80% 60% at 50% 0%, #2d1f6e44, transparent);
-    }
-    .eyebrow {
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #818cf8;
-      margin-bottom: 1.25rem;
-      background: #1e1b4b;
-      padding: 0.35rem 1.1rem;
-      border-radius: 999px;
-      border: 1px solid #3730a3;
     }
     h1 {
-      font-size: clamp(2.5rem, 6vw, 5rem);
+      font-size: clamp(2.8rem, 7vw, 5.5rem);
       font-weight: 900;
-      line-height: 1.1;
-      letter-spacing: -0.03em;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
       margin-bottom: 1.5rem;
+      color: #F5F5F5;
     }
-    h1 .accent { color: #6c63ff; }
+    h1 .accent { color: #00FF88; }
     .sub {
       font-size: 1.15rem;
-      color: #8888a8;
-      max-width: 560px;
+      color: #6b7a8d;
+      max-width: 540px;
       margin: 0 auto 2.5rem;
       line-height: 1.7;
     }
     .cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
     .btn-primary {
-      background: #6c63ff;
-      color: #fff;
+      background: #00FF88;
+      color: #0b0f14;
       padding: 0.85rem 2.2rem;
       border-radius: 10px;
       font-weight: 700;
@@ -57,7 +45,7 @@ export class PageHome extends LitElement {
       font-family: inherit;
       transition: all 0.2s;
     }
-    .btn-primary:hover { background: #5a52e0; transform: translateY(-2px); box-shadow: 0 8px 24px #6c63ff44; }
+    .btn-primary:hover { background: #00d474; transform: translateY(-2px); box-shadow: 0 8px 24px #00FF8822; }
     .btn-ghost {
       background: transparent;
       color: #ccc;
@@ -66,11 +54,11 @@ export class PageHome extends LitElement {
       font-weight: 600;
       font-size: 1rem;
       cursor: pointer;
-      border: 1px solid #2e2e3e;
+      border: 1px solid #1e2836;
       font-family: inherit;
       transition: all 0.2s;
     }
-    .btn-ghost:hover { border-color: #555; color: #fff; }
+    .btn-ghost:hover { border-color: #00FF8844; color: #F5F5F5; }
     .stats {
       display: flex;
       gap: 3rem;
@@ -79,8 +67,8 @@ export class PageHome extends LitElement {
       flex-wrap: wrap;
     }
     .stat { text-align: center; }
-    .stat-val { font-size: 2.2rem; font-weight: 900; color: #fff; }
-    .stat-label { font-size: 0.82rem; color: #8888a8; margin-top: 0.25rem; }
+    .stat-val { font-size: 2.2rem; font-weight: 900; color: #00FF88; }
+    .stat-label { font-size: 0.82rem; color: #6b7a8d; margin-top: 0.25rem; }
     .features {
       padding: 5rem 2rem;
       max-width: 1100px;
@@ -91,6 +79,7 @@ export class PageHome extends LitElement {
       font-size: 2rem;
       font-weight: 800;
       margin-bottom: 3rem;
+      color: #F5F5F5;
     }
     .grid {
       display: grid;
@@ -98,29 +87,29 @@ export class PageHome extends LitElement {
       gap: 1.5rem;
     }
     .feature-card {
-      background: #1a1a24;
-      border: 1px solid #2e2e3e;
+      background: #111820;
+      border: 1px solid #1e2836;
       border-radius: 14px;
       padding: 2rem;
       transition: border-color 0.2s;
     }
-    .feature-card:hover { border-color: #6c63ff44; }
+    .feature-card:hover { border-color: #00FF8844; }
     .feature-icon {
       width: 48px;
       height: 48px;
-      background: #1e1b4b;
+      background: #0d1a15;
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 1.25rem;
-      color: #818cf8;
+      color: #00FF88;
     }
     .feature-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
-    .feature-card p { color: #8888a8; font-size: 0.88rem; line-height: 1.7; }
+    .feature-card p { color: #6b7a8d; font-size: 0.88rem; line-height: 1.7; }
     .fee-banner {
-      background: linear-gradient(135deg, #1e1b4b, #2d1f6e);
-      border: 1px solid #3730a3;
+      background: #111820;
+      border: 1px solid #1e2836;
       border-radius: 20px;
       padding: 3.5rem;
       text-align: center;
@@ -128,14 +117,14 @@ export class PageHome extends LitElement {
       margin: 4rem auto;
     }
     .fee-banner h2 { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.75rem; }
-    .fee-banner p { color: #a5b4fc; font-size: 1rem; margin-bottom: 2rem; }
+    .fee-banner p { color: #6b7a8d; font-size: 1rem; margin-bottom: 2rem; }
     .fee-compare { display: flex; gap: 3rem; justify-content: center; flex-wrap: wrap; }
     .fee-item { text-align: center; }
     .fee-pct { font-size: 2.4rem; font-weight: 900; }
     .fee-pct.them { color: #f87171; }
-    .fee-pct.us { color: #4ade80; }
-    .fee-name { font-size: 0.82rem; color: #8888a8; margin-top: 0.3rem; }
-    .fee-divider { width: 1px; background: #3730a3; align-self: stretch; }
+    .fee-pct.us { color: #00FF88; }
+    .fee-name { font-size: 0.82rem; color: #6b7a8d; margin-top: 0.3rem; }
+    .fee-divider { width: 1px; background: #1e2836; align-self: stretch; }
     @media (max-width: 640px) {
       .hero { min-height: auto; padding: 3rem 1.25rem; }
       .stats { gap: 1.5rem; margin-top: 3rem; }
@@ -150,18 +139,17 @@ export class PageHome extends LitElement {
   render() {
     return html`
       <div class="hero">
-        <div class="eyebrow">Your Ticket Platform</div>
-        <h1>Tickets that don't<br><span class="accent">crash or scalp you</span></h1>
-        <p class="sub">Buy tickets for live music, comedy, and events — with transparent fees and zero bots.</p>
+        <h1>Precision<br><span class="accent">Beats Power.</span></h1>
+        <p class="sub">A ticketing platform built to outmaneuver monopolies — and survive the drop.</p>
         <div class="cta-row">
-          <button class="btn-primary" @click=${() => navigate('/events')}>Browse Events</button>
-          <button class="btn-ghost" @click=${() => navigate('/register')}>Create Account</button>
+          <button class="btn-primary" @click=${() => navigate('/events')}>Find Tickets</button>
+          <button class="btn-ghost" @click=${() => navigate('/register')}>Launch Your Event</button>
         </div>
         <div class="stats">
           <div class="stat"><div class="stat-val">~3%</div><div class="stat-label">Service Fee</div></div>
           <div class="stat"><div class="stat-val">0</div><div class="stat-label">Crashes at Drop</div></div>
           <div class="stat"><div class="stat-val">Live</div><div class="stat-label">QR Validation</div></div>
-          <div class="stat"><div class="stat-val">🚀</div><div class="stat-label">Slingshot</div></div>
+          <div class="stat"><div class="stat-val">Fair</div><div class="stat-label">For Venues</div></div>
         </div>
       </div>
 

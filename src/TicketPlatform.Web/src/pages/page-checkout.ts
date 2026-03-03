@@ -7,7 +7,7 @@ import { navigate } from '../services/auth.js';
 export class PageCheckout extends LitElement {
   static styles = css`
     :host { display: block; padding: 2rem; max-width: 520px; margin: 0 auto; }
-    .back { color: #8888a8; cursor: pointer; font-size: 0.9rem; margin-bottom: 1.5rem; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .back { color: #6b7a8d; cursor: pointer; font-size: 0.9rem; margin-bottom: 1.5rem; display: inline-flex; align-items: center; gap: 0.4rem; }
     .back:hover { color: #fff; }
 
     /* Event header */
@@ -16,10 +16,10 @@ export class PageCheckout extends LitElement {
       border: 1px solid #2e2e4e; border-radius: 16px;
       padding: 1.5rem; margin-bottom: 1.5rem;
     }
-    .event-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #6c63ff; font-weight: 700; margin-bottom: 0.5rem; }
+    .event-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #00FF88; font-weight: 700; margin-bottom: 0.5rem; }
     .event-name { font-size: 1.4rem; font-weight: 900; margin-bottom: 0.5rem; line-height: 1.2; }
     .event-meta { display: flex; flex-direction: column; gap: 0.25rem; }
-    .event-meta span { font-size: 0.85rem; color: #8888a8; display: flex; align-items: center; gap: 0.4rem; }
+    .event-meta span { font-size: 0.85rem; color: #6b7a8d; display: flex; align-items: center; gap: 0.4rem; }
 
     /* Order items */
     .section-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #555568; font-weight: 700; margin-bottom: 0.75rem; }
@@ -31,19 +31,19 @@ export class PageCheckout extends LitElement {
     .item-row:last-child { border-bottom: none; }
     .item-left { display: flex; flex-direction: column; gap: 0.15rem; }
     .item-name { font-weight: 600; font-size: 0.95rem; }
-    .item-sub { font-size: 0.8rem; color: #8888a8; }
+    .item-sub { font-size: 0.8rem; color: #6b7a8d; }
     .item-price { font-weight: 700; font-size: 0.95rem; }
 
     /* Totals block */
     .totals {
-      background: #1a1a24; border: 1px solid #2e2e3e; border-radius: 12px;
+      background: #111820; border: 1px solid #1e2836; border-radius: 12px;
       padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
     }
     .total-row { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.5rem; color: #aaa; }
     .total-row:last-child { margin-bottom: 0; }
     .total-row.grand {
       font-size: 1.15rem; font-weight: 900; color: #f0f0f8;
-      border-top: 1px solid #2e2e3e; padding-top: 0.75rem; margin-top: 0.5rem;
+      border-top: 1px solid #1e2836; padding-top: 0.75rem; margin-top: 0.5rem;
     }
 
     /* Timer */
@@ -56,13 +56,13 @@ export class PageCheckout extends LitElement {
     /* CTA */
     .cta-area { display: flex; flex-direction: column; gap: 0.75rem; }
     .btn-pay {
-      width: 100%; background: #6c63ff; color: #fff;
+      width: 100%; background: #00FF88; color: #0b0f14;
       padding: 1rem; border-radius: 12px; font-weight: 800;
       font-size: 1.05rem; cursor: pointer; border: none;
       font-family: inherit; transition: background 0.2s;
       display: flex; align-items: center; justify-content: center; gap: 0.5rem;
     }
-    .btn-pay:hover:not(:disabled) { background: #5a52e0; }
+    .btn-pay:hover:not(:disabled) { background: #00d474; }
     .btn-pay:disabled { opacity: 0.4; cursor: not-allowed; }
     .secure-note { text-align: center; font-size: 0.78rem; color: #555568; }
 
@@ -70,10 +70,10 @@ export class PageCheckout extends LitElement {
     .success { text-align: center; padding: 3rem 2rem; }
     .success .icon { font-size: 4rem; margin-bottom: 1rem; }
     .success h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
-    .success p { color: #8888a8; margin-bottom: 2rem; }
-    .btn { width: 100%; background: #6c63ff; color: #fff; padding: 0.9rem; border-radius: 10px; font-weight: 700; font-size: 1rem; cursor: pointer; border: none; font-family: inherit; }
+    .success p { color: #6b7a8d; margin-bottom: 2rem; }
+    .btn { width: 100%; background: #00FF88; color: #0b0f14; padding: 0.9rem; border-radius: 10px; font-weight: 700; font-size: 1rem; cursor: pointer; border: none; font-family: inherit; }
 
-    .loading { text-align: center; padding: 5rem; color: #8888a8; }
+    .loading { text-align: center; padding: 5rem; color: #6b7a8d; }
     .error { background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 1rem; color: #fca5a5; margin-bottom: 1rem; }
     @media (max-width: 640px) {
       :host { padding: 1rem; }

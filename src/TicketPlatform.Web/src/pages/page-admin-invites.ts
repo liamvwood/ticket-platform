@@ -28,15 +28,15 @@ export class PageAdminInvites extends LitElement {
   static styles = css`
     :host { display: block; padding: 2rem; max-width: 800px; margin: 0 auto; }
     h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.25rem; }
-    .sub { color: #8888a8; margin-bottom: 2rem; font-size: 0.95rem; }
-    .card { background: #1a1a24; border: 1px solid #2e2e3e; border-radius: 14px; padding: 1.75rem; margin-bottom: 1.5rem; }
+    .sub { color: #6b7a8d; margin-bottom: 2rem; font-size: 0.95rem; }
+    .card { background: #111820; border: 1px solid #1e2836; border-radius: 14px; padding: 1.75rem; margin-bottom: 1.5rem; }
     .card h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.25rem; }
     .field { margin-bottom: 1rem; }
     label { display: block; font-size: 0.85rem; font-weight: 600; color: #ccc; margin-bottom: 0.35rem; }
-    input { width: 100%; background: #22222f; border: 1px solid #2e2e3e; color: #f0f0f8; border-radius: 8px; padding: 0.65rem 0.9rem; font-size: 0.95rem; box-sizing: border-box; font-family: inherit; }
-    input:focus { outline: none; border-color: #6c63ff; }
-    .btn { background: #6c63ff; color: #fff; padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; font-family: inherit; font-size: 0.95rem; }
-    .btn:hover:not(:disabled) { background: #5a52e0; }
+    input { width: 100%; background: #0d1319; border: 1px solid #1e2836; color: #f0f0f8; border-radius: 8px; padding: 0.65rem 0.9rem; font-size: 0.95rem; box-sizing: border-box; font-family: inherit; }
+    input:focus { outline: none; border-color: #00FF88; }
+    .btn { background: #00FF88; color: #fff; padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; border: none; font-family: inherit; font-size: 0.95rem; }
+    .btn:hover:not(:disabled) { background: #00d474; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-sm { background: transparent; border: 1px solid #444; color: #ccc; padding: 0.35rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-family: inherit; }
     .btn-sm:hover { border-color: #888; color: #fff; }
@@ -45,9 +45,9 @@ export class PageAdminInvites extends LitElement {
     .error { background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 0.75rem 1rem; color: #fca5a5; font-size: 0.9rem; margin-bottom: 1rem; }
     .success { background: #052e16; border: 1px solid #166534; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
     .invite-url { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
-    .invite-url input { flex: 1; font-family: monospace; font-size: 0.85rem; color: #a5b4fc; }
+    .invite-url input { flex: 1; font-family: monospace; font-size: 0.85rem; color: #9cc4b2; }
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    th { text-align: left; color: #8888a8; font-weight: 600; font-size: 0.8rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid #2e2e3e; }
+    th { text-align: left; color: #6b7a8d; font-weight: 600; font-size: 0.8rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid #1e2836; }
     td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #1e1e2e; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     .badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }
@@ -59,7 +59,7 @@ export class PageAdminInvites extends LitElement {
     .kebab-wrap { position: relative; display: inline-block; }
     .kebab-btn {
       background: transparent;
-      border: 1px solid #2e2e3e;
+      border: 1px solid #1e2836;
       color: #888;
       border-radius: 6px;
       width: 30px; height: 30px;
@@ -73,7 +73,7 @@ export class PageAdminInvites extends LitElement {
     .kebab-btn:hover { border-color: #666; color: #fff; }
     .kebab-menu {
       position: absolute; right: 0; top: calc(100% + 4px);
-      background: #1e1e2e; border: 1px solid #2e2e3e; border-radius: 8px;
+      background: #1e1e2e; border: 1px solid #1e2836; border-radius: 8px;
       min-width: 140px; z-index: 50; overflow: hidden;
       box-shadow: 0 8px 24px #0008;
     }
@@ -83,7 +83,7 @@ export class PageAdminInvites extends LitElement {
       padding: 0.6rem 1rem; font-size: 0.87rem; font-family: inherit;
       cursor: pointer; transition: background 0.1s;
     }
-    .kebab-item:hover { background: #2e2e3e; color: #fff; }
+    .kebab-item:hover { background: #1e2836; color: #fff; }
     .kebab-item.danger { color: #fca5a5; }
     .kebab-item.danger:hover { background: #450a0a; }
     @media (max-width: 640px) {

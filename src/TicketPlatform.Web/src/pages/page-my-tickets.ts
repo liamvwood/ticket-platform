@@ -8,7 +8,7 @@ type Filter = 'upcoming' | 'past' | 'all';
 
 // Deterministic accent palette per ticket (cycles on event id hash)
 const PALETTES = [
-  { from: '#6c63ff', to: '#a78bfa', text: '#e9e6ff' },
+  { from: '#00FF88', to: '#a78bfa', text: '#e9e6ff' },
   { from: '#0ea5e9', to: '#38bdf8', text: '#e0f2fe' },
   { from: '#10b981', to: '#34d399', text: '#d1fae5' },
   { from: '#f59e0b', to: '#fbbf24', text: '#fef3c7' },
@@ -33,7 +33,7 @@ export class PageMyTickets extends LitElement {
     }
     h1 { font-size: 2rem; font-weight: 900; margin: 0; }
     .count-badge {
-      background: #2e2e3e; color: #a5b4fc;
+      background: #1e2836; color: #9cc4b2;
       font-size: 0.8rem; font-weight: 700;
       padding: 0.2rem 0.6rem; border-radius: 999px;
       vertical-align: middle; margin-left: 0.5rem;
@@ -45,12 +45,12 @@ export class PageMyTickets extends LitElement {
     }
     .tab {
       padding: 0.45rem 1.1rem; border-radius: 999px;
-      border: 1px solid #2e2e3e; font-size: 0.85rem; font-weight: 600;
-      cursor: pointer; font-family: inherit; background: transparent; color: #8888a8;
+      border: 1px solid #1e2836; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; font-family: inherit; background: transparent; color: #6b7a8d;
       transition: all 0.15s;
     }
-    .tab:hover { border-color: #6c63ff; color: #a89cff; }
-    .tab.active { background: #6c63ff; border-color: #6c63ff; color: #fff; }
+    .tab:hover { border-color: #00FF88; color: #a89cff; }
+    .tab.active { background: #00FF88; border-color: #00FF88; color: #fff; }
 
     /* ── Ticket shell ── */
     .ticket-shell {
@@ -118,12 +118,12 @@ export class PageMyTickets extends LitElement {
     .perf-notch-left { background: #0a0a0f; margin-left: -10px; }
     .perf-notch-right { background: #0a0a0f; margin-right: -10px; margin-left: auto; }
     .perf-line {
-      flex: 1; border-top: 2px dashed #2e2e3e; margin: 0 0.5rem;
+      flex: 1; border-top: 2px dashed #1e2836; margin: 0 0.5rem;
     }
 
     /* ── Ticket stub (bottom white/dark section) ── */
     .ticket-stub {
-      background: #1a1a24; padding: 1.5rem 1.75rem;
+      background: #111820; padding: 1.5rem 1.75rem;
       display: flex; gap: 1.5rem; align-items: center;
     }
     .qr-wrap {
@@ -135,7 +135,7 @@ export class PageMyTickets extends LitElement {
     .qr-pending {
       width: 100px; height: 100px;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: #0d0d14; border-radius: 10px; border: 1px dashed #2e2e3e;
+      background: #0d0d14; border-radius: 10px; border: 1px dashed #1e2836;
       font-size: 2rem; gap: 0.3rem;
     }
     .qr-pending span { font-size: 0.65rem; color: #555568; }
@@ -154,7 +154,7 @@ export class PageMyTickets extends LitElement {
     .badge-paid { background: #14532d; color: #22c55e; }
     .badge-pending { background: #451a03; color: #f59e0b; }
     .badge-cancelled { background: #450a0a; color: #ef4444; }
-    .badge-checked { background: #1e1b4b; color: #818cf8; }
+    .badge-checked { background: #0d1a15; color: #00FF88; }
 
     /* ── Action row ── */
     .ticket-actions {
@@ -166,11 +166,11 @@ export class PageMyTickets extends LitElement {
       flex: 1; min-width: 80px;
       display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
       padding: 0.55rem 0.5rem; border-radius: 10px;
-      border: 1px solid #2e2e3e; background: transparent;
-      color: #8888a8; font-size: 0.72rem; font-weight: 600; font-family: inherit;
+      border: 1px solid #1e2836; background: transparent;
+      color: #6b7a8d; font-size: 0.72rem; font-weight: 600; font-family: inherit;
       cursor: pointer; transition: all 0.15s;
     }
-    .action-btn:hover { border-color: #6c63ff; color: #a89cff; background: #1a1a2e; }
+    .action-btn:hover { border-color: #00FF88; color: #a89cff; background: #1a1a2e; }
     .action-icon { font-size: 1.2rem; line-height: 1; }
 
     /* ── Fullscreen QR modal ── */
@@ -183,13 +183,13 @@ export class PageMyTickets extends LitElement {
     }
     .qr-modal-close {
       position: absolute; top: 1.25rem; right: 1.25rem;
-      background: #2e2e3e; border: none; color: #fff;
+      background: #1e2836; border: none; color: #fff;
       width: 36px; height: 36px; border-radius: 50%;
       font-size: 1rem; cursor: pointer; font-family: inherit;
       display: flex; align-items: center; justify-content: center;
     }
     .qr-modal-event { font-size: 1.2rem; font-weight: 900; margin-bottom: 0.25rem; text-align: center; }
-    .qr-modal-sub { font-size: 0.85rem; color: #8888a8; margin-bottom: 1.5rem; text-align: center; }
+    .qr-modal-sub { font-size: 0.85rem; color: #6b7a8d; margin-bottom: 1.5rem; text-align: center; }
     .qr-modal-img { background: #fff; border-radius: 16px; padding: 1rem; margin-bottom: 1rem; }
     .qr-modal-img img { display: block; width: 220px; height: 220px; image-rendering: pixelated; }
     .qr-modal-hint { font-size: 0.8rem; color: #555568; text-align: center; max-width: 280px; line-height: 1.6; }
@@ -205,17 +205,17 @@ export class PageMyTickets extends LitElement {
     .wallet-btn-google { background: #1a73e8; color: #fff; }
 
     /* ── Empty / loading ── */
-    .empty { text-align: center; padding: 5rem 2rem; color: #8888a8; }
+    .empty { text-align: center; padding: 5rem 2rem; color: #6b7a8d; }
     .empty-icon { font-size: 4rem; margin-bottom: 1rem; }
     .empty p { margin-bottom: 1.5rem; font-size: 1rem; }
     .btn-browse {
-      background: #6c63ff; color: #fff;
+      background: #00FF88; color: #fff;
       padding: 0.75rem 2rem; border-radius: 10px;
       font-weight: 700; cursor: pointer; border: none;
       font-family: inherit; font-size: 0.95rem;
     }
-    .btn-browse:hover { background: #5a52e0; }
-    .loading { text-align: center; padding: 5rem; color: #8888a8; }
+    .btn-browse:hover { background: #00d474; }
+    .loading { text-align: center; padding: 5rem; color: #6b7a8d; }
 
     /* ── Toast ── */
     .toast {

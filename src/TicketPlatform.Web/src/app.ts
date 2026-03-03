@@ -27,15 +27,15 @@ export class TpApp extends LitElement {
     :host { display: block; min-height: 100vh; }
     main { min-height: calc(100vh - 60px); }
     footer {
-      border-top: 1px solid #2e2e3e;
+      border-top: 1px solid #1e2836;
       padding: 1.5rem 2rem;
       text-align: center;
-      color: #8888a8;
+      color: #6b7a8d;
       font-size: 0.85rem;
     }
     .not-found { text-align: center; padding: 8rem 2rem; }
     .not-found h1 { font-size: 4rem; margin-bottom: 1rem; }
-    .not-found p { color: #8888a8; }
+    .not-found p { color: #6b7a8d; }
   `;
 
   @state() private _path = window.location.pathname;
@@ -83,7 +83,7 @@ export class TpApp extends LitElement {
     return html`
       <tp-nav></tp-nav>
       <main>${this._resolve()}</main>
-      <footer>© 2025 Slingshot · Low fees · No bots · Community first</footer>
+      <footer>© 2025 Slingshot · Precision Beats Power. · Low fees · No bots</footer>
     `;
   }
 }

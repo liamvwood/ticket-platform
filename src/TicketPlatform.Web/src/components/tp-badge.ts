@@ -16,8 +16,8 @@ export class TpBadge extends LitElement {
     .success { background: #14532d; color: #22c55e; }
     .warning { background: #451a03; color: #f59e0b; }
     .danger  { background: #450a0a; color: #ef4444; }
-    .info    { background: #1e1b4b; color: #818cf8; }
-    .muted   { background: #1e1e2e; color: #8888a8; }
+    .info    { background: #0d1a15; color: #00FF88; }
+    .muted   { background: #1e1e2e; color: #6b7a8d; }
   `;
   @property() variant: 'success' | 'warning' | 'danger' | 'info' | 'muted' = 'info';
 
