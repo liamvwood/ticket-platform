@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6c63ff"/>
+      <stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded ticket body -->
+  <rect x="2" y="8" width="28" height="16" rx="3" fill="url(#g)"/>
+  <!-- Left notch -->
+  <circle cx="2" cy="16" r="3" fill="#0d0d14"/>
+  <!-- Right notch -->
+  <circle cx="30" cy="16" r="3" fill="#0d0d14"/>
+  <!-- Perforation line -->
+  <line x1="10" y1="9" x2="10" y2="23" stroke="#ffffff" stroke-width="1" stroke-dasharray="2 2" opacity="0.4"/>
+  <!-- Ticket stub text lines -->
+  <rect x="13" y="12" width="11" height="2" rx="1" fill="white" opacity="0.9"/>
+  <rect x="13" y="16" width="8" height="1.5" rx="0.75" fill="white" opacity="0.55"/>
+  <rect x="13" y="19" width="6" height="1.5" rx="0.75" fill="white" opacity="0.4"/>
+  <!-- Small star/sparkle -->
+  <circle cx="6.5" cy="16" r="1.5" fill="white" opacity="0.8"/>
+</svg>
