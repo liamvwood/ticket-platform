@@ -13,11 +13,13 @@ A full-stack ticketing platform built for Austin, TX venues. Competes with Ticke
 - **Anonymous checkout** — buy with just a phone number + OTP, no account needed
 - **Zero platform fees** — 100% of ticket revenue goes directly to the venue; fans can optionally add a voluntary $1–$5 contribution to keep the lights on
 - **QR ticket delivery** — unique signed QR codes issued after payment
-- **My Tickets** — view all orders and tickets (works for guest + registered users)
+- **My Tickets** — polished physical-ticket card UI with live QR codes, filter tabs (Upcoming / Past / All), and checked-in overlay
 - **Share events** — native share sheet on mobile, clipboard fallback on desktop; share links include referral tracking
+- **Add to Calendar / Reminders** — generates a downloadable `.ics` file with 1-hour and 1-day VALARM reminders
+- **Digital Wallet** — fullscreen QR modal with Apple Wallet and Google Calendar CTAs
 
 ### For Venues
-- **Venue portal** — create events, add ticket types, set quantities and per-order limits
+- **Venue portal** — create events, manage ticket types (add / remove), set quantities and per-order limits
 - **Publish/unpublish** — control when events go live
 - **QR scanner app** — mobile-friendly camera-based scanner with instant Valid / Duplicate / Invalid / Refunded status
 - **Referral attribution** — see which orders came from word-of-mouth referral links
@@ -28,6 +30,9 @@ A full-stack ticketing platform built for Austin, TX venues. Competes with Ticke
 - **Referral codes** — every user gets a unique code; `?ref=code` on share links is attributed on orders
 - **Anti-scalping** — per-order ticket limits, identity binding, short-lived rotating QR tokens, rate limiting
 - **Drop-ready** — optimistic concurrency + row-level locking to prevent overselling under load
+- **Reverse proxy** — nginx in front of frontend and API for rate limiting and DDoS mitigation
+- **Observability** — Prometheus metrics exported from the API; four Grafana dashboards (API requests, outbound HTTP, cluster resources, business metrics)
+- **Favicon** — purple gradient ticket SVG icon
 
 ---
 
@@ -40,17 +45,26 @@ A full-stack ticketing platform built for Austin, TX venues. Competes with Ticke
 └──────────────────────┬──────────────────────────────┘
                        │ HTTP / JSON
 ┌──────────────────────▼──────────────────────────────┐
+│           nginx reverse proxy  (rate limit / DDoS)  │
+└──────────────────────┬──────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────┐
 │              .NET 10 Web API  (stateless)            │
 │  Auth · Events · Orders · Payments · Check-in · OG  │
+│  Prometheus /metrics endpoint                       │
 └──────────────────────┬──────────────────────────────┘
                        │ EF Core
 ┌──────────────────────▼──────────────────────────────┐
 │             PostgreSQL 16                            │
 └─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│  Prometheus → Grafana (cluster + API dashboards)    │
+└─────────────────────────────────────────────────────┘
 ```
 
 **Local / CI:** Docker Compose  
-**Production:** Helm chart on Kubernetes (Azure-preferred, cloud-agnostic)
+**Production:** Helm chart on Amazon EKS (Kubernetes 1.31, t3.small nodes, us-east-1)
 
 ---
 
@@ -89,6 +103,7 @@ A full-stack ticketing platform built for Austin, TX venues. Competes with Ticke
 | `POST` | `/events` | Create event *(VenueAdmin)* |
 | `PUT`  | `/events/{id}/publish` | Publish event *(VenueAdmin)* |
 | `POST` | `/events/{id}/ticket-types` | Add ticket type *(VenueAdmin)* |
+| `DELETE` | `/events/{id}/ticket-types/{ttId}` | Remove ticket type *(VenueAdmin)* |
 
 ### Orders
 | Method | Path | Description |
@@ -162,12 +177,15 @@ Configured via `Otp:Provider`:
 - Order rate limiting: fixed-window middleware on purchase endpoint
 - Row-level locking (`FOR UPDATE SKIP LOCKED`) prevents overselling under concurrent load
 - Optimistic concurrency (`xmin` on `TicketType`) as EF Core concurrency token
+- nginx reverse proxy with `limit_req_zone` rate limiting on the ingress layer
+- Server-side errors are caught and normalized — stack traces never reach the frontend
+- `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy` security headers set on all API responses
 
 ---
 
 ## 🧪 Testing
 
-40 Playwright E2E tests covering all major flows:
+60 Playwright E2E tests covering all major flows:
 
 ```bash
 cd src/TicketPlatform.Web
@@ -179,7 +197,7 @@ npm run test:e2e
 | Home page | Hero render, CTAs |
 | Authentication | Register, login, logout, wrong password |
 | Events page | Live events, demo fallback, card navigation |
-| Venue admin flow | Create event, add ticket type, publish |
+| Venue admin flow | Create event, add/remove ticket types, publish |
 | Purchase flow | Reserve → checkout → mock-confirm → Paid status |
 | Guest OTP checkout | request-otp devCode, verify-otp → Guest JWT, place order, wrong code |
 | Platform fee | Zero fee, custom fee ($2), fee clamping (>$20 → $20) |
@@ -188,11 +206,53 @@ npm run test:e2e
 | Event slugs | Slug present on events, slug lookup, OG HTML, OG SVG image |
 | Referral codes | Code generated on register, referral count endpoint |
 | Navigation | Brand, Events, Login links |
+| OAuth mock login | OAuth callback flow |
+| Venue invite flow | Admin creates invite, venue accepts, venue can create events |
+| VenueAdmin lockdown | Unauthenticated access blocked |
 | API health | `/healthz` |
 
 ---
 
-## 🚀 Getting Started
+## 📊 Observability
+
+Prometheus metrics are scraped from the API's `/metrics` endpoint and visualised in Grafana.
+
+| Dashboard | Panels |
+|-----------|--------|
+| **API Requests** | Request rate, error rate (5xx), p50/p95/p99 latency by endpoint |
+| **Outbound HTTP** | External call rate + latency (Stripe, Twilio, etc.) |
+| **Cluster Resources** | Node CPU & memory usage, pod counts |
+| **Business Metrics** | Orders per hour, tickets sold, platform fee collected |
+
+**Grafana access (test ring):**  
+URL: `https://grafana.100.29.51.191.sslip.io`  
+Default credentials are in the Helm `values-test.yaml` (not committed — set via Kubernetes secret).
+
+---
+
+## 🚀 CI/CD Pipeline
+
+Every push to `main` triggers the **CI/CD – Test Ring** GitHub Actions workflow:
+
+| Stage | What happens |
+|-------|-------------|
+| **Build & Test** | `dotnet build` + `dotnet test` (unit); `npm run build` + `npm test`; Playwright E2E against local API+frontend |
+| **Build & Push images** | Docker builds API + frontend images; pushed to Amazon ECR |
+| **Deploy to Test EKS** | `helm upgrade --install` on the `ticket-platform-test` EKS cluster (us-east-1) |
+| **Smoke tests** | `curl` healthz + homepage reachability check against the live cluster |
+| **E2E on EKS** | Full 60-test Playwright suite against `https://app.100.29.51.191.sslip.io` |
+
+**Test ring URLs:**
+| Service | URL |
+|---------|-----|
+| Frontend | `https://app.100.29.51.191.sslip.io` |
+| API | `https://api.100.29.51.191.sslip.io` |
+| Health | `https://api.100.29.51.191.sslip.io/healthz` |
+| Grafana | `https://grafana.100.29.51.191.sslip.io` |
+
+---
+
+## 🏁 Getting Started
 
 ### Prerequisites
 - Docker + Docker Compose
@@ -281,13 +341,23 @@ ticket-platform/
 │       │   ├── pages/                   # page-home, page-events, page-event-detail,
 │       │   │                            #   page-checkout, page-my-tickets, page-auth,
 │       │   │                            #   page-venue-dashboard, page-venue-new-event,
-│       │   │                            #   page-scanner
+│       │   │                            #   page-scanner, page-admin-invites,
+│       │   │                            #   page-invite-accept, page-oauth-callback
 │       │   ├── components/tp-nav.ts
 │       │   └── services/                # api.ts, auth.ts, icons.ts
-│       ├── e2e/app.spec.ts              # 40 Playwright E2E tests
+│       ├── public/favicon.svg           # Purple gradient ticket icon
+│       ├── e2e/app.spec.ts              # 60 Playwright E2E tests
 │       └── playwright.config.ts
 ├── helm/                                # Kubernetes Helm chart
+│   ├── templates/                       # Deployment, Service, Ingress, HPA,
+│   │                                    #   ServiceMonitor (Prometheus scrape)
+│   ├── dashboards/                      # Grafana dashboard JSON (4 dashboards)
+│   ├── values.yaml
+│   └── values-test.yaml                 # Test ring overrides
+├── .github/workflows/deploy.yml         # CI/CD – Test Ring pipeline
 ├── Dockerfile
+├── Dockerfile.frontend
+├── nginx.conf                           # Reverse proxy config
 └── docker-compose.yml
 ```
 
@@ -302,20 +372,25 @@ ticket-platform/
 - Stripe payment integration + mock provider for local dev
 - QR token generation + check-in validation
 - Web Components SPA (customer website, venue portal, scanner)
-- Docker Compose + Helm chart
+- Docker Compose + Helm chart on Amazon EKS
 - Anonymous guest checkout (phone + OTP, mock + Twilio)
 - Zero platform fees with voluntary fan contribution UI
 - Human-readable event slugs
 - Social share button (Web Share API + clipboard)
 - Open Graph preview endpoint + dynamic SVG images
 - Referral code tracking and attribution
-- 40 Playwright E2E tests
+- My Tickets — physical ticket card UI, real QR codes, calendar export, wallet modal
+- Venue invite flow — owner-only invite system with one-time accept links
+- Owner event creation UI — create events, manage ticket types from the frontend
+- nginx reverse proxy — rate limiting and DDoS mitigation
+- Security headers — `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`; server errors never surface to frontend
+- Prometheus metrics + four Grafana dashboards (API requests, outbound HTTP, cluster resources, business metrics)
+- GitHub Actions CI/CD pipeline — build → test → ECR push → EKS deploy → E2E smoke suite
+- 60 Playwright E2E tests (full CI + EKS ring coverage)
+- Favicon — purple gradient ticket SVG icon
 
 ### Planned 🔜
-- [ ] Apple Wallet + Google Wallet pass generation
 - [ ] Venue payout system (Stripe Connect)
-- [ ] Observability stack (Prometheus + Grafana + Loki)
-- [ ] GitHub Actions CI/CD pipeline
 - [ ] Virtual queue / waiting room for high-demand drops
 - [ ] Venue analytics dashboard (sales, referral breakdown by event)
 - [ ] Email notifications (order confirmation, event reminders)
