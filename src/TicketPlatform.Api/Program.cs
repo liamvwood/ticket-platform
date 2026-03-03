@@ -103,11 +103,11 @@ builder.Services.AddRateLimiter(options =>
         o.QueueLimit = 0;
         o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
     });
-    // Extra-strict limit on OTP requests
+    // Extra-strict limit on OTP requests (allow more per window for E2E test runs)
     options.AddFixedWindowLimiter("otp", o =>
     {
         o.Window = TimeSpan.FromMinutes(10);
-        o.PermitLimit = 3;
+        o.PermitLimit = 20;
         o.QueueLimit = 0;
         o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
     });
