@@ -110,4 +110,20 @@ public class EventsController(AppDbContext db, AppMetrics metrics) : ControllerB
         await db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetById), new { id = eventId }, ticketType);
     }
+
+    [HttpDelete("{eventId:guid}/ticket-types/{ticketTypeId:guid}")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
+    public async Task<IActionResult> DeleteTicketType(Guid eventId, Guid ticketTypeId)
+    {
+        var tt = await db.TicketTypes
+            .Include(t => t.Tickets)
+            .FirstOrDefaultAsync(t => t.Id == ticketTypeId && t.EventId == eventId);
+        if (tt is null) return NotFound();
+        if (tt.Tickets.Any(t => t.Status != TicketPlatform.Core.Enums.TicketStatus.Available))
+            return Conflict("Cannot delete a ticket type with sold or reserved tickets.");
+        db.Tickets.RemoveRange(tt.Tickets);
+        db.TicketTypes.Remove(tt);
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
 }

@@ -18,6 +18,8 @@ const USER_EMAIL = 'e2ebuyer@austintickets.dev';
 const USER_PASS = 'Password123!';
 const VENUE_EMAIL = 'venue@austintickets.dev';
 const VENUE_PASS = 'Password123!';
+const OWNER_EMAIL = 'owner@austintickets.dev';
+const OWNER_PASS = 'ChangeMe123!';
 
 // Unique suffix for data created during this run
 const RUN = Date.now().toString().slice(-6);
@@ -44,6 +46,13 @@ async function apiPut(path: string, token?: string) {
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${API}${path}`, { method: 'PUT', headers });
+  return res.status;
+}
+
+async function apiDelete(path: string, token?: string) {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API}${path}`, { method: 'DELETE', headers });
   return res.status;
 }
 
@@ -207,6 +216,26 @@ test.describe('Venue admin flow', () => {
 
   test('can publish the event', async () => {
     const status = await apiPut(`/events/${eventId}/publish`, venueToken);
+    expect(status).toBe(204);
+  });
+
+  test('can delete an unpublished ticket type', async () => {
+    // Create a throwaway ticket type then delete it
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+    const dayAfter  = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const saleStart = new Date(Date.now() - 3_600_000).toISOString();
+    const evRes = await apiPost('/events', {
+      venueId: VENUE_ID, name: `Delete TT Test ${RUN}`,
+      description: 'delete test', startsAt: tomorrow, endsAt: dayAfter, saleStartsAt: saleStart,
+    }, venueToken);
+    const tmpEventId = evRes.json().id;
+
+    const ttRes = await apiPost(`/events/${tmpEventId}/ticket-types`,
+      { name: 'To Delete', price: 10, totalQuantity: 5, maxPerOrder: 2 }, venueToken);
+    expect(ttRes.status()).toBe(201);
+    const tmpTtId = ttRes.json().id;
+
+    const status = await apiDelete(`/events/${tmpEventId}/ticket-types/${tmpTtId}`, venueToken);
     expect(status).toBe(204);
   });
 
@@ -638,9 +667,6 @@ test.describe('OAuth mock login', () => {
 // ─── Venue invite flow ─────────────────────────────────────────────────────
 
 test.describe('Venue invite flow', () => {
-  const OWNER_EMAIL = 'owner@austintickets.dev';
-  const OWNER_PASS = 'ChangeMe123!';
-
   let ownerToken = '';
   let inviteToken = '';
   const venueEmail = `invited_venue_${RUN}@test.dev`;
@@ -710,9 +736,6 @@ test.describe('Venue invite flow', () => {
 });
 
 test.describe('VenueAdmin invite-only lockdown', () => {
-  const OWNER_EMAIL = 'owner@austintickets.dev';
-  const OWNER_PASS = 'ChangeMe123!';
-
   let ownerToken = '';
   let lockdownInviteToken = '';
   const invitedEmail = `lockdown_${RUN}@test.dev`;

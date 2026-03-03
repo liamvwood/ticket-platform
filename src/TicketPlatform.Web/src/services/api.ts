@@ -53,6 +53,8 @@ export const api = {
     request<void>(`/events/${id}/publish`, { method: 'PUT' }),
   createTicketType: (eventId: string, data: any) =>
     request<any>(`/events/${eventId}/ticket-types`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteTicketType: (eventId: string, ticketTypeId: string) =>
+    request<void>(`/events/${eventId}/ticket-types/${ticketTypeId}`, { method: 'DELETE' }),
 
   // Orders
   createOrder: (ticketTypeId: string, quantity: number, platformFee = 0, referralCode?: string) => {

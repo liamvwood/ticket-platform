@@ -108,8 +108,20 @@ export class PageEventDetail extends LitElement {
       .header h1 { font-size: 1.5rem; }
       .header-top { flex-direction: column; }
       .tt-row { flex-direction: column; align-items: flex-start; }
-      .tt-right { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
-      .btn { flex: 1; min-width: 0; text-align: center; justify-content: center; }
+      .tt-right {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+      }
+      .tt-right > .price { font-size: 1.2rem; }
+      .qty-row { justify-content: space-between; }
+      .btn {
+        width: 100%;
+        text-align: center;
+        white-space: normal;
+        flex: none;
+      }
       .modal { padding: 1.5rem; }
     }
   `;

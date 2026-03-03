@@ -28,6 +28,19 @@ export class PageVenueNewEvent extends LitElement {
     .btn:disabled { opacity: .4; cursor: not-allowed; }
     .error { background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: .75rem 1rem; color: #fca5a5; margin-bottom: 1rem; }
     .tt-added { background: #14532d; border: 1px solid #166534; border-radius: 8px; padding: .75rem 1rem; color: #86efac; margin-bottom: 1rem; }
+    /* Ticket type list */
+    .tt-list { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1.5rem; }
+    .tt-item {
+      background: #13131c; border: 1px solid #2e2e3e; border-radius: 10px;
+      padding: 1rem 1.25rem; display: flex; align-items: center;
+      justify-content: space-between; gap: 1rem;
+    }
+    .tt-item-info { flex: 1; min-width: 0; }
+    .tt-item-name { font-weight: 700; font-size: .95rem; margin-bottom: .2rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tt-item-meta { font-size: .8rem; color: #8888a8; }
+    .tt-item-price { font-size: 1.1rem; font-weight: 800; color: #22c55e; white-space: nowrap; }
+    .tt-remove { background: none; border: none; color: #555568; cursor: pointer; padding: .25rem; border-radius: 4px; line-height: 1; font-size: 1.1rem; }
+    .tt-remove:hover { color: #ef4444; background: #1e0a0a; }
     .step-indicator { display: flex; gap: 1rem; margin-bottom: 2rem; }
     .step { padding: .4rem 1rem; border-radius: 999px; font-size: .8rem; font-weight: 600; }
     .step.active { background: #1e1b4b; color: #818cf8; border: 1px solid #3730a3; }
@@ -44,6 +57,7 @@ export class PageVenueNewEvent extends LitElement {
   @state() loading = false;
   @state() error = '';
   @state() ttAdded = 0;
+  @state() ticketTypes: Array<{id: string; name: string; price: number; totalQuantity: number; maxPerOrder: number}> = [];
   @state() venues: any[] = [];
   @state() showNewVenue = false;
   @state() newVenueName = '';
@@ -118,12 +132,23 @@ export class PageVenueNewEvent extends LitElement {
     e.preventDefault();
     this.loading = true; this.error = '';
     try {
-      await api.createTicketType(this.createdEventId, {
+      const tt = await api.createTicketType(this.createdEventId, {
         name: this.ttName, price: parseFloat(this.ttPrice),
         totalQuantity: parseInt(this.ttQty), maxPerOrder: parseInt(this.ttMax),
       });
+      this.ticketTypes = [...this.ticketTypes, tt];
       this.ttAdded++;
-      this.ttName = ''; this.ttPrice = ''; this.ttQty = ''; this.ttMax = '4';
+      this.ttName = 'General Admission'; this.ttPrice = ''; this.ttQty = ''; this.ttMax = '4';
+    } catch (err: any) { this.error = err.message; }
+    finally { this.loading = false; }
+  }
+
+  private async _removeTicketType(id: string) {
+    this.loading = true; this.error = '';
+    try {
+      await api.deleteTicketType(this.createdEventId, id);
+      this.ticketTypes = this.ticketTypes.filter(t => t.id !== id);
+      this.ttAdded = this.ticketTypes.length;
     } catch (err: any) { this.error = err.message; }
     finally { this.loading = false; }
   }
@@ -217,10 +242,27 @@ export class PageVenueNewEvent extends LitElement {
           </button>
         </form>
       ` : html`
-        ${this.ttAdded > 0 ? html`<div class="tt-added">✓ ${this.ttAdded} ticket type${this.ttAdded > 1 ? 's' : ''} added</div>` : ''}
+        ${this.ticketTypes.length > 0 ? html`
+          <div class="card">
+            <h2>Ticket Types Added</h2>
+            <div class="tt-list">
+              ${this.ticketTypes.map(tt => html`
+                <div class="tt-item">
+                  <div class="tt-item-info">
+                    <div class="tt-item-name">${tt.name}</div>
+                    <div class="tt-item-meta">${tt.totalQuantity} tickets · max ${tt.maxPerOrder}/order</div>
+                  </div>
+                  <div class="tt-item-price">$${tt.price.toFixed(2)}</div>
+                  <button class="tt-remove" title="Remove" ?disabled=${this.loading}
+                    @click=${() => this._removeTicketType(tt.id)}>✕</button>
+                </div>
+              `)}
+            </div>
+          </div>
+        ` : ''}
         <form @submit=${this._addTicketType}>
           <div class="card">
-            <h2>Add Ticket Type</h2>
+            <h2>${this.ticketTypes.length > 0 ? 'Add Another Ticket Type' : 'Add Ticket Type'}</h2>
             <div class="field">
               <label>Name</label>
               <input type="text" .value=${this.ttName} @input=${(e: any) => this.ttName = e.target.value} required placeholder="General Admission" />
@@ -244,7 +286,7 @@ export class PageVenueNewEvent extends LitElement {
             <button class="btn" type="submit" ?disabled=${this.loading}>
               ${this.loading ? 'Adding…' : '+ Add Ticket Type'}
             </button>
-            ${this.ttAdded > 0 ? html`
+            ${this.ticketTypes.length > 0 ? html`
               <button class="btn" type="button" style="background:#22c55e" ?disabled=${this.loading} @click=${this._publish}>
                 ${this.loading ? '…' : '✓ Publish Event'}
               </button>
