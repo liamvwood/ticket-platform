@@ -114,12 +114,42 @@ jobs:
       # ── Seed E2E users ───────────────────────────────────────
       - name: Seed E2E users
         run: |
-          curl -sf -X POST http://localhost:8080/auth/register \
+          # Register buyer (User role) — must include phoneNumber (NOT NULL column)
+          STATUS=$(curl -s -w "%{http_code}" -o /tmp/reg.json \
+            -X POST http://localhost:8080/auth/register \
             -H "Content-Type: application/json" \
-            -d '{"email":"e2ebuyer@austintickets.dev","password":"Password123!","role":"User"}' || true
-          curl -sf -X POST http://localhost:8080/auth/register \
+            -d '{"email":"e2ebuyer@austintickets.dev","password":"Password123!","phoneNumber":""}')
+          [ "$STATUS" = "200" ] || [ "$STATUS" = "409" ] || \
+            { echo "Buyer registration failed ($STATUS): $(cat /tmp/reg.json)"; exit 1; }
+          echo "Buyer user: $STATUS"
+
+          # Seed VenueAdmin via invite flow (AppOwner seeded from appsettings.Development.json)
+          OWNER_TOKEN=$(curl -sf -X POST http://localhost:8080/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"venue@austintickets.dev","password":"Password123!","role":"VenueAdmin"}' || true
+            -d '{"email":"owner@austintickets.dev","password":"ChangeMe123!"}' | jq -r '.token')
+          [ -n "$OWNER_TOKEN" ] || { echo "AppOwner login failed"; exit 1; }
+
+          INVITE=$(curl -sf -X POST http://localhost:8080/admin/invites \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OWNER_TOKEN" \
+            -d '{"email":"venue@austintickets.dev","venueName":"Test Venue Admin"}')
+          INVITE_TOKEN=$(echo "$INVITE" | jq -r '.token // empty')
+
+          if [ -n "$INVITE_TOKEN" ]; then
+            curl -sf -X POST "http://localhost:8080/invites/$INVITE_TOKEN/accept" \
+              -H "Content-Type: application/json" \
+              -d '{"password":"Password123!","phoneNumber":""}' > /dev/null
+            echo "VenueAdmin seeded via invite"
+          else
+            echo "Invite creation response: $INVITE"
+            # User may already exist with correct role — verify login works
+            V_STATUS=$(curl -s -w "%{http_code}" -o /tmp/vlogin.json \
+              -X POST http://localhost:8080/auth/login \
+              -H "Content-Type: application/json" \
+              -d '{"email":"venue@austintickets.dev","password":"Password123!"}')
+            [ "$V_STATUS" = "200" ] || { echo "VenueAdmin seed failed (status $V_STATUS): $(cat /tmp/vlogin.json)"; exit 1; }
+            echo "VenueAdmin already exists"
+          fi
 
       # ── Start frontend dev server ────────────────────────────
       - name: Start frontend dev server
@@ -284,13 +314,41 @@ jobs:
       - name: Seed E2E users on EKS
         run: |
           API=https://${{ secrets.TEST_API_HOST }}
-          # Seed test venue (idempotent)
-          curl -sf -X POST $API/auth/register \
+
+          # Register buyer (must include phoneNumber — NOT NULL column)
+          STATUS=$(curl -s -w "%{http_code}" -o /tmp/reg.json \
+            -X POST $API/auth/register \
             -H "Content-Type: application/json" \
-            -d '{"email":"e2ebuyer@austintickets.dev","password":"Password123!","role":"User"}' || true
-          curl -sf -X POST $API/auth/register \
+            -d '{"email":"e2ebuyer@austintickets.dev","password":"Password123!","phoneNumber":""}')
+          [ "$STATUS" = "200" ] || [ "$STATUS" = "409" ] || \
+            { echo "Buyer registration failed ($STATUS): $(cat /tmp/reg.json)"; exit 1; }
+          echo "Buyer: $STATUS"
+
+          # Seed VenueAdmin via invite flow
+          OWNER_TOKEN=$(curl -sf -X POST $API/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"venue@austintickets.dev","password":"Password123!","role":"VenueAdmin"}' || true
+            -d '{"email":"owner@austintickets.dev","password":"ChangeMe123!"}' | jq -r '.token')
+          [ -n "$OWNER_TOKEN" ] || { echo "AppOwner login failed on EKS"; exit 1; }
+
+          INVITE=$(curl -sf -X POST $API/admin/invites \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OWNER_TOKEN" \
+            -d '{"email":"venue@austintickets.dev","venueName":"Test Venue Admin"}')
+          INVITE_TOKEN=$(echo "$INVITE" | jq -r '.token // empty')
+
+          if [ -n "$INVITE_TOKEN" ]; then
+            curl -sf -X POST "$API/invites/$INVITE_TOKEN/accept" \
+              -H "Content-Type: application/json" \
+              -d '{"password":"Password123!","phoneNumber":""}' > /dev/null
+            echo "VenueAdmin seeded via invite"
+          else
+            V_STATUS=$(curl -s -w "%{http_code}" -o /tmp/vlogin.json \
+              -X POST $API/auth/login \
+              -H "Content-Type: application/json" \
+              -d '{"email":"venue@austintickets.dev","password":"Password123!"}')
+            [ "$V_STATUS" = "200" ] || { echo "VenueAdmin seed failed ($V_STATUS): $(cat /tmp/vlogin.json)"; exit 1; }
+            echo "VenueAdmin already exists"
+          fi
 
       - name: Run E2E tests against EKS
         working-directory: src/TicketPlatform.Web
