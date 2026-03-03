@@ -248,6 +248,9 @@ jobs:
       # Note: DB migrations run automatically via db.Database.Migrate() in Program.cs
       # on pod startup — EKS pods have VPC access to RDS, GitHub Actions runner does not.
       - name: Helm upgrade (test ring)
+        env:
+          DB_CONN: ${{ secrets.TEST_DB_CONNECTION_STRING }}
+          JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
         run: |
           helm upgrade --install ticket-platform-test ./helm \
             --namespace ticket-platform-test \
@@ -259,8 +262,8 @@ jobs:
             --set frontend.image.tag=${{ github.sha }} \
             --set ingress.host=${{ secrets.TEST_API_HOST }} \
             --set frontend.ingress.host=${{ secrets.TEST_FRONTEND_HOST }} \
-            --set secrets.connectionString=${{ secrets.TEST_DB_CONNECTION_STRING }} \
-            --set secrets.jwtSecret=${{ secrets.TEST_JWT_SECRET }} \
+            --set "secrets.connectionString=$DB_CONN" \
+            --set "secrets.jwtSecret=$JWT_SECRET" \
             --set secrets.stripeSecretKey="unused" \
             --set secrets.stripeWebhookSecret="unused" \
             --timeout 5m \
