@@ -136,6 +136,15 @@ export class PageHome extends LitElement {
     .fee-pct.us { color: #4ade80; }
     .fee-name { font-size: 0.82rem; color: #8888a8; margin-top: 0.3rem; }
     .fee-divider { width: 1px; background: #3730a3; align-self: stretch; }
+    @media (max-width: 640px) {
+      .hero { min-height: auto; padding: 3rem 1.25rem; }
+      .stats { gap: 1.5rem; margin-top: 3rem; }
+      .features { padding: 3rem 1.25rem; }
+      .fee-banner { padding: 2rem 1.25rem; margin: 2rem 1.25rem; }
+      .fee-banner h2 { font-size: 1.4rem; }
+      .fee-compare { gap: 1.5rem; }
+      .fee-divider { display: none; }
+    }
   `;
 
   render() {

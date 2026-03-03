@@ -12,7 +12,17 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
+    // Try to extract a human-readable message from JSON error bodies
+    try {
+      const json = JSON.parse(text);
+      const msg = json.error ?? json.title ?? json.message ?? json.detail;
+      if (msg && typeof msg === 'string') throw new Error(msg);
+      // Re-throw raw JSON so callers can inspect structured fields (e.g. invitePending)
+      throw new Error(text);
+    } catch (e) {
+      if (e instanceof SyntaxError) throw new Error(`HTTP ${res.status}`);
+      throw e;
+    }
   }
   const ct = res.headers.get('content-type') ?? '';
   return ct.includes('application/json') ? res.json() : (null as T);

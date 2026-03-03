@@ -103,6 +103,14 @@ export class PageEventDetail extends LitElement {
       padding: 0.6rem 1rem; font-size: 0.82rem; color: #a89cff;
       margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;
     }
+    @media (max-width: 640px) {
+      :host { padding: 1rem; }
+      .header h1 { font-size: 1.5rem; }
+      .header-top { flex-direction: column; }
+      .tt-row { flex-direction: column; align-items: flex-start; }
+      .tt-right { width: 100%; justify-content: space-between; }
+      .modal { padding: 1.5rem; }
+    }
   `;
 
   @property() eventId = '';

@@ -53,6 +53,12 @@ export class PageVenueDashboard extends LitElement {
     .progress-fill { background: #6c63ff; border-radius: 999px; height: 6px; }
     .loading { text-align: center; padding: 5rem; color: #8888a8; }
     .empty-row td { text-align: center; color: #8888a8; padding: 3rem; }
+    @media (max-width: 640px) {
+      :host { padding: 1rem; }
+      h1 { font-size: 1.4rem; }
+      table { font-size: 0.82rem; }
+      th, td { padding: 0.5rem 0.4rem; }
+    }
   `;
 
   @state() events: any[] = [];

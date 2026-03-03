@@ -97,6 +97,10 @@ export class PageAuth extends LitElement {
     .oauth-btn:hover { filter: brightness(1.1); }
     .oauth-btn:last-of-type { margin-bottom: 0; }
     .oauth-icon { display: flex; align-items: center; flex-shrink: 0; }
+    @media (max-width: 640px) {
+      :host { padding: 1rem; min-height: auto; align-items: flex-start; padding-top: 2rem; }
+      .box { padding: 1.75rem 1.25rem; }
+    }
   `;
 
   @property() mode: 'login' | 'register' = 'login';

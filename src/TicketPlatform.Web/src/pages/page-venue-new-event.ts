@@ -32,6 +32,9 @@ export class PageVenueNewEvent extends LitElement {
     .step.active { background: #1e1b4b; color: #818cf8; border: 1px solid #3730a3; }
     .step.done { background: #14532d; color: #22c55e; }
     .step.inactive { background: #1e1e2e; color: #8888a8; }
+    @media (max-width: 640px) {
+      :host { padding: 1rem; }
+    }
   `;
 
   @state() step: 'event' | 'tickets' = 'event';

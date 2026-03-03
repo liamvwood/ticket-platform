@@ -80,6 +80,11 @@ export class PageEvents extends LitElement {
       gap: 0.5rem;
     }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; flex-shrink: 0; }
+    @media (max-width: 640px) {
+      :host { padding: 1.25rem; }
+      h1 { font-size: 1.5rem; }
+      .grid { grid-template-columns: 1fr; gap: 1rem; }
+    }
   `;
 
   @state() events: any[] = [];

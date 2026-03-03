@@ -55,7 +55,46 @@ export class PageAdminInvites extends LitElement {
     .badge-used { background: #052e16; color: #86efac; }
     .badge-expired { background: #292524; color: #a8a29e; }
     .empty { color: #555570; text-align: center; padding: 2rem; }
-    .row-actions { display: flex; gap: 0.5rem; }
+    /* Kebab menu */
+    .kebab-wrap { position: relative; display: inline-block; }
+    .kebab-btn {
+      background: transparent;
+      border: 1px solid #2e2e3e;
+      color: #888;
+      border-radius: 6px;
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+      font-family: inherit;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .kebab-btn:hover { border-color: #666; color: #fff; }
+    .kebab-menu {
+      position: absolute; right: 0; top: calc(100% + 4px);
+      background: #1e1e2e; border: 1px solid #2e2e3e; border-radius: 8px;
+      min-width: 140px; z-index: 50; overflow: hidden;
+      box-shadow: 0 8px 24px #0008;
+    }
+    .kebab-item {
+      display: block; width: 100%; text-align: left;
+      background: none; border: none; color: #ccc;
+      padding: 0.6rem 1rem; font-size: 0.87rem; font-family: inherit;
+      cursor: pointer; transition: background 0.1s;
+    }
+    .kebab-item:hover { background: #2e2e3e; color: #fff; }
+    .kebab-item.danger { color: #fca5a5; }
+    .kebab-item.danger:hover { background: #450a0a; }
+    @media (max-width: 640px) {
+      :host { padding: 1rem; }
+      h1 { font-size: 1.4rem; }
+      table { font-size: 0.82rem; }
+      th, td { padding: 0.5rem 0.4rem; }
+      /* Hide less important columns on mobile */
+      th:nth-child(3), td:nth-child(3),
+      th:nth-child(4), td:nth-child(4) { display: none; }
+    }
   `;
 
   @state() email = '';
@@ -65,12 +104,22 @@ export class PageAdminInvites extends LitElement {
   @state() newInviteUrl = '';
   @state() newInviteEmail = '';
   @state() invites: any[] = [];
+  @state() openKebab: string | null = null;
 
   connectedCallback() {
     super.connectedCallback();
     if (auth.role !== 'AppOwner') { navigate('/'); return; }
     this._loadInvites();
+    // Close kebab on outside click
+    document.addEventListener('click', this._closeKebab);
   }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('click', this._closeKebab);
+  }
+
+  private _closeKebab = () => { this.openKebab = null; };
 
   private async _loadInvites() {
     try {
@@ -172,12 +221,19 @@ export class PageAdminInvites extends LitElement {
                   <td>${this._fmtDate(inv.expiresAt)}</td>
                   <td><span class="badge badge-${inv.status}">${inv.status}</span></td>
                   <td>
-                    <div class="row-actions">
-                      ${inv.status === 'pending' && inv.inviteUrl ? html`
-                        <button class="btn-sm" @click=${() => this._copy(inv.inviteUrl)}>Copy Link</button>
-                        <button class="btn-sm btn-danger" @click=${() => this._revoke(inv.id)}>Revoke</button>
-                      ` : ''}
-                    </div>
+                    ${inv.status === 'pending' ? html`
+                      <div class="kebab-wrap" @click=${(e: Event) => e.stopPropagation()}>
+                        <button class="kebab-btn" @click=${() => this.openKebab = this.openKebab === inv.id ? null : inv.id}>⋮</button>
+                        ${this.openKebab === inv.id ? html`
+                          <div class="kebab-menu">
+                            ${inv.inviteUrl ? html`
+                              <button class="kebab-item" @click=${() => { this._copy(inv.inviteUrl); this.openKebab = null; }}>📋 Copy Link</button>
+                            ` : ''}
+                            <button class="kebab-item danger" @click=${() => { this._revoke(inv.id); this.openKebab = null; }}>🗑 Revoke</button>
+                          </div>
+                        ` : ''}
+                      </div>
+                    ` : ''}
                   </td>
                 </tr>
               `)}

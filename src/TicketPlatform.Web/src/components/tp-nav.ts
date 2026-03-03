@@ -1,5 +1,5 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { auth, navigate } from '../services/auth.js';
 import { icons } from '../services/icons.js';
 
@@ -59,10 +59,60 @@ export class TpNav extends LitElement {
       color: #ccc;
     }
     .btn-ghost:hover { border-color: #666; color: #fff; }
+
+    /* Hamburger */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+    .hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: #ccc;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+
+    /* Mobile drawer */
+    .drawer {
+      display: none;
+      flex-direction: column;
+      background: #13131c;
+      border-bottom: 1px solid #2e2e3e;
+      padding: 1rem 1.5rem;
+      gap: 0.75rem;
+    }
+    .drawer.open { display: flex; }
+    .drawer a {
+      color: #aaa;
+      font-size: 0.95rem;
+      cursor: pointer;
+      background: none;
+      border: none;
+      text-align: left;
+      font-family: inherit;
+      padding: 0.35rem 0;
+      transition: color 0.2s;
+    }
+    .drawer a:hover { color: #fff; }
+    .drawer .btn { text-align: center; }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 1rem; }
+      .links { display: none; }
+      .hamburger { display: flex; }
+    }
   `;
 
   @property({ type: Boolean }) loggedIn = false;
   @property({ type: String }) role = '';
+  @state() menuOpen = false;
 
   connectedCallback() {
     super.connectedCallback();
@@ -78,27 +128,48 @@ export class TpNav extends LitElement {
     this.role = auth.role ?? '';
   };
 
+  private _nav(path: string) {
+    this.menuOpen = false;
+    navigate(path);
+  }
+
   render() {
     return html`
       <nav>
-        <div class="brand" @click=${() => navigate('/')}>
+        <div class="brand" @click=${() => this._nav('/')}>
           <span .innerHTML=${icons.ticket}></span>
           Austin Tickets
         </div>
         <div class="links">
-          <a @click=${() => navigate('/events')}>Events</a>
+          <a @click=${() => this._nav('/events')}>Events</a>
           ${this.loggedIn ? html`
-            <a @click=${() => navigate('/my-tickets')}>My Tickets</a>
-            ${this.role === 'VenueAdmin' ? html`<a @click=${() => navigate('/venue')}>Venue Portal</a>` : ''}
-            ${this.role === 'Scanner' || this.role === 'VenueAdmin' ? html`<a @click=${() => navigate('/scan')}>Scanner</a>` : ''}
-            ${this.role === 'AppOwner' ? html`<a @click=${() => navigate('/admin/invites')}>Admin</a>` : ''}
+            <a @click=${() => this._nav('/my-tickets')}>My Tickets</a>
+            ${this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/venue')}>Venue Portal</a>` : ''}
+            ${this.role === 'Scanner' || this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/scan')}>Scanner</a>` : ''}
+            ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/admin/invites')}>Admin</a>` : ''}
             <button class="btn btn-ghost" @click=${() => auth.logout()}>Logout</button>
           ` : html`
-            <a @click=${() => navigate('/login')}>Login</a>
-            <button class="btn" @click=${() => navigate('/register')}>Get Started</button>
+            <a @click=${() => this._nav('/login')}>Login</a>
+            <button class="btn" @click=${() => this._nav('/register')}>Get Started</button>
           `}
         </div>
+        <button class="hamburger" @click=${() => this.menuOpen = !this.menuOpen} aria-label="Toggle menu">
+          <span></span><span></span><span></span>
+        </button>
       </nav>
+      <div class="drawer ${this.menuOpen ? 'open' : ''}">
+        <a @click=${() => this._nav('/events')}>Events</a>
+        ${this.loggedIn ? html`
+          <a @click=${() => this._nav('/my-tickets')}>My Tickets</a>
+          ${this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/venue')}>Venue Portal</a>` : ''}
+          ${this.role === 'Scanner' || this.role === 'VenueAdmin' ? html`<a @click=${() => this._nav('/scan')}>Scanner</a>` : ''}
+          ${this.role === 'AppOwner' ? html`<a @click=${() => this._nav('/admin/invites')}>Admin</a>` : ''}
+          <button class="btn btn-ghost" @click=${() => auth.logout()}>Logout</button>
+        ` : html`
+          <a @click=${() => this._nav('/login')}>Login</a>
+          <button class="btn" @click=${() => this._nav('/register')}>Get Started</button>
+        `}
+      </div>
     `;
   }
 }

@@ -133,11 +133,14 @@ public class AuthController(
         if (user is null)
         {
             var userId = Guid.NewGuid();
+            // Use a phone-derived placeholder email so the unique Email index is satisfied.
+            // Multiple guests on different phones each get a distinct noemail entry.
+            var guestEmail = $"phone:{Uri.EscapeDataString(phone)}@noemail.local";
             user = new User
             {
                 Id = userId,
                 PhoneNumber = phone,
-                Email = string.Empty,
+                Email = guestEmail,
                 PasswordHash = string.Empty,
                 Role = "Guest",
                 PhoneVerified = true,

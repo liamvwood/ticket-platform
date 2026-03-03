@@ -94,6 +94,19 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+// Global exception handler — always return clean JSON, never leak stack traces
+app.UseExceptionHandler(errApp => errApp.Run(async ctx =>
+{
+    ctx.Response.StatusCode = 500;
+    ctx.Response.ContentType = "application/json";
+    var feature = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+    var ex = feature?.Error;
+    // Log full details server-side
+    var logger = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "Unhandled exception on {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
+    await ctx.Response.WriteAsJsonAsync(new { error = "An unexpected error occurred. Please try again." });
+}));
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

@@ -74,6 +74,12 @@ export class PageMyTickets extends LitElement {
       max-width: 140px;
       text-align: center;
     }
+    @media (max-width: 640px) {
+      :host { padding: 1rem; }
+      h1 { font-size: 1.5rem; }
+      .ticket-card { grid-template-columns: 1fr; }
+      .qr-section { text-align: left; }
+    }
   `;
 
   @state() orders: any[] = [];

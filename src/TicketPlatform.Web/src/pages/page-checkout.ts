@@ -58,6 +58,10 @@ export class PageCheckout extends LitElement {
     .loading { text-align: center; padding: 5rem; color: #8888a8; }
     .error { background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 1rem; color: #fca5a5; margin-bottom: 1rem; }
     .note { font-size: 0.8rem; color: #8888a8; text-align: center; margin-top: 1rem; }
+    @media (max-width: 640px) {
+      :host { padding: 1rem; }
+      h1 { font-size: 1.4rem; }
+    }
   `;
 
   @property() orderId = '';
