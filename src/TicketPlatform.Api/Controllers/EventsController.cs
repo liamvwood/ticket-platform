@@ -72,7 +72,7 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
 
         // Dropping soon filter: SaleStartsAt within the next 24 hours
         if (dropping == true)
-            query = query.Where(e => e.SaleStartsAt != null && e.SaleStartsAt > now && e.SaleStartsAt <= now.AddHours(24));
+            query = query.Where(e => e.SaleStartsAt > now && e.SaleStartsAt <= now.AddHours(24));
 
         var orderedQuery = tab == "past"
             ? query.OrderByDescending(e => e.StartsAt)
