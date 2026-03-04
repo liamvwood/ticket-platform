@@ -12,4 +12,6 @@ public class MockPaymentProvider : IPaymentProvider
         var secret = $"{id}_secret_{Guid.NewGuid():N}";
         return Task.FromResult(new PaymentIntentResult(secret, id));
     }
+
+    public Task RefundAsync(string paymentIntentId) => Task.CompletedTask; // mock — no real charge to refund
 }

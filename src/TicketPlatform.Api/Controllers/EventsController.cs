@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TicketPlatform.Api.Models;
 using TicketPlatform.Api.Services;
 using TicketPlatform.Core.Entities;
@@ -10,7 +11,7 @@ namespace TicketPlatform.Api.Controllers;
 
 [ApiController]
 [Route("events")]
-public class EventsController(AppDbContext db, AppMetrics metrics, IStorageService storage) : ControllerBase
+public class EventsController(AppDbContext db, AppMetrics metrics, IStorageService storage, IPaymentProvider paymentProvider) : ControllerBase
 {
     private const int DefaultPageSize = 12;
     private const int MaxPageSize = 100;
@@ -253,6 +254,88 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         return NoContent();
     }
 
+    [HttpPut("{id:guid}/unpublish")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
+    public async Task<IActionResult> Unpublish(Guid id)
+    {
+        var ev = await db.Events.FindAsync(id);
+        if (ev is null) return NotFound();
+        ev.IsPublished = false;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // POST /events/{id}/cancel — cancel event and refund all paid orders
+    [HttpPost("{id:guid}/cancel")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
+    public async Task<IActionResult> Cancel(Guid id, [FromBody] CancelEventRequest req)
+    {
+        var ev = await db.Events
+            .Include(e => e.Venue)
+            .Include(e => e.TicketTypes)
+                .ThenInclude(tt => tt.Tickets)
+                    .ThenInclude(t => t.Order)
+            .FirstOrDefaultAsync(e => e.Id == id);
+        if (ev is null) return NotFound();
+        if (ev.IsCancelled) return Conflict("Event is already cancelled.");
+
+        if (!User.IsInRole("AppOwner"))
+        {
+            var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (ev.Venue?.OwnerId != callerId) return Forbid();
+        }
+
+        // Refund all paid orders and void reserved ones
+        var processedOrders = new HashSet<Guid>();
+        foreach (var ticket in ev.TicketTypes.SelectMany(tt => tt.Tickets))
+        {
+            var order = ticket.Order;
+            if (order is null || processedOrders.Contains(order.Id)) continue;
+            processedOrders.Add(order.Id);
+
+            if (order.Status == Core.Enums.OrderStatus.Paid && order.StripePaymentIntentId is not null)
+            {
+                await paymentProvider.RefundAsync(order.StripePaymentIntentId);
+                order.Status = Core.Enums.OrderStatus.Refunded;
+            }
+            else if (order.Status == Core.Enums.OrderStatus.AwaitingPayment)
+            {
+                order.Status = Core.Enums.OrderStatus.Cancelled;
+            }
+
+            order.UpdatedAt = DateTimeOffset.UtcNow;
+            foreach (var t in order.Tickets)
+            {
+                t.Status = Core.Enums.TicketStatus.Cancelled;
+                t.UpdatedAt = DateTimeOffset.UtcNow;
+            }
+        }
+
+        ev.IsCancelled = true;
+        ev.CancelledAt = DateTimeOffset.UtcNow;
+        ev.CancellationReason = req.Reason?.Trim();
+        ev.IsPublished = false;
+        await db.SaveChangesAsync();
+        metrics.EventsPublishedTotal.Inc(); // reuse counter — in production add a dedicated cancellation counter
+        return NoContent();
+    }
+
+    // POST /events/{id}/release-funds — AppOwner releases held funds to venue after event ends
+    [HttpPost("{id:guid}/release-funds")]
+    [Authorize(Roles = "AppOwner")]
+    public async Task<IActionResult> ReleaseFunds(Guid id)
+    {
+        var ev = await db.Events.FindAsync(id);
+        if (ev is null) return NotFound();
+        if (ev.IsCancelled) return Conflict("Cannot release funds for a cancelled event.");
+        if (ev.FundsReleasedAt is not null) return Conflict("Funds have already been released.");
+        if (ev.EndsAt > DateTimeOffset.UtcNow) return BadRequest("Event has not ended yet.");
+
+        ev.FundsReleasedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpPost("{eventId:guid}/ticket-types")]
     [Authorize(Roles = "VenueAdmin,AppOwner")]
     public async Task<ActionResult<TicketType>> CreateTicketType(Guid eventId, CreateTicketTypeRequest req)
@@ -278,6 +361,46 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         db.Tickets.AddRange(tickets);
         await db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetById), new { id = eventId }, ticketType);
+    }
+
+    [HttpDelete("{eventId:guid}")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
+    public async Task<IActionResult> DeleteEvent(Guid eventId, [FromQuery] bool force = false)
+    {
+        var ev = await db.Events
+            .Include(e => e.TicketTypes)
+                .ThenInclude(tt => tt.Tickets)
+            .Include(e => e.Venue)
+            .FirstOrDefaultAsync(e => e.Id == eventId);
+        if (ev is null) return NotFound();
+
+        // VenueAdmins may only delete events belonging to their own venue
+        if (!User.IsInRole("AppOwner"))
+        {
+            var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (ev.Venue?.OwnerId != callerId)
+                return Forbid();
+        }
+
+        // force=true (AppOwner only) bypasses sold-ticket guard — used for test/dev cleanup of mock-payment data
+        if (force && !User.IsInRole("AppOwner"))
+            return Forbid();
+
+        if (!force)
+        {
+            var hasSoldTickets = ev.TicketTypes
+                .SelectMany(tt => tt.Tickets)
+                .Any(t => t.Status != Core.Enums.TicketStatus.Available);
+            if (hasSoldTickets)
+                return Conflict("Cannot delete an event with sold or reserved tickets. Cancel the event first to issue refunds.");
+        }
+
+        foreach (var tt in ev.TicketTypes)
+            db.Tickets.RemoveRange(tt.Tickets);
+        db.TicketTypes.RemoveRange(ev.TicketTypes);
+        db.Events.Remove(ev);
+        await db.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpDelete("{eventId:guid}/ticket-types/{ticketTypeId:guid}")]
@@ -326,6 +449,9 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         EventType: e.EventType,
         IsHot: hotEventIds.Contains(e.Id),
         TicketsDroppingSoon: e.SaleStartsAt > now && e.SaleStartsAt < now.AddHours(24),
+        IsCancelled: e.IsCancelled,
+        CancellationReason: e.CancellationReason,
+        FundsReleasedAt: e.FundsReleasedAt,
         Venue: e.Venue,
         TicketTypes: e.TicketTypes
     );

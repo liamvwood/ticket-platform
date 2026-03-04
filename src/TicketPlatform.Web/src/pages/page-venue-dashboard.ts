@@ -273,18 +273,32 @@ export class PageVenueDashboard extends LitElement {
                     <td>
                       <strong>${ev.name}</strong>
                       ${ev.recurringRule ? html`<span class="recurring-badge">↻ ${ev.recurringRule.charAt(0) + ev.recurringRule.slice(1).toLowerCase()}</span>` : ''}
+                      ${ev.isCancelled ? html`<span class="badge" style="background:#7f1d1d;color:#fca5a5;margin-left:.4rem">Cancelled</span>` : ''}
                     </td>
                     ${this.isOwner ? html`<td>${ev.venue?.name ?? '—'}</td>` : ''}
                     <td>${new Date(ev.startsAt).toLocaleDateString()}</td>
-                    <td><span class="badge ${ev.isPublished ? 'badge-pub' : 'badge-draft'}">${ev.isPublished ? 'Published' : 'Draft'}</span></td>
+                    <td>
+                      ${ev.isCancelled
+                        ? html`<span class="badge" style="background:#7f1d1d;color:#fca5a5">Cancelled</span>`
+                        : html`<span class="badge ${ev.isPublished ? 'badge-pub' : 'badge-draft'}">${ev.isPublished ? 'Published' : 'Draft'}</span>`}
+                    </td>
                     <td>
                       ${evSold} / ${evTotal}
                       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
                     </td>
-                    <td>$${evRev.toFixed(2)}</td>
+                    <td>
+                      $${evRev.toFixed(2)}
+                      ${!ev.isCancelled && new Date(ev.endsAt) < new Date() ? html`
+                        <div style="font-size:0.75rem;margin-top:2px;color:${ev.fundsReleasedAt ? '#00FF88' : '#f59e0b'}">
+                          ${ev.fundsReleasedAt ? '✅ Funds released' : '⏳ Pending payout'}
+                        </div>
+                      ` : ''}
+                    </td>
                     <td style="display:flex;gap:.5rem;align-items:center">
                       <button class="btn-ghost" @click=${() => this._openShare(ev)} title="Share">📤</button>
-                      <button class="btn-ghost" @click=${() => navigate(`/venue/events/${ev.id}`)}>Manage</button>
+                      ${ev.isCancelled
+                        ? html`<span style="font-size:0.8rem;color:#6b7a8d">Cancelled</span>`
+                        : html`<button class="btn-ghost" @click=${() => navigate(`/venue/events/${ev.id}`)}>Manage</button>`}
                     </td>
                   </tr>
                 `;

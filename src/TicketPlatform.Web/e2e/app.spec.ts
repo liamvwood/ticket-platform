@@ -56,6 +56,17 @@ async function apiDelete(path: string, token?: string) {
   return res.status;
 }
 
+/** Best-effort event cleanup — uses AppOwner force-delete to bypass sold-ticket checks on mock payment data. */
+async function deleteEvent(eventId: string, _token: string) {
+  if (!eventId) return;
+  // Always use owner credentials for force=true so cleanup succeeds regardless of ticket/order state
+  const ownerToken = await getToken(OWNER_EMAIL, OWNER_PASS).catch(() => _token);
+  await fetch(`${API}/events/${eventId}?force=true`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${ownerToken}` },
+  }).catch(() => { /* network errors ignored during cleanup */ });
+}
+
 async function getToken(email: string, pass: string): Promise<string> {
   const res = await apiPost('/auth/login', { email, password: pass });
   const token = res.json()?.token;
@@ -157,9 +168,15 @@ test.describe('Venue admin flow', () => {
   let venueToken: string;
   let eventId: string;
   let ticketTypeId: string;
+  let tmpEventId: string;
 
   test.beforeAll(async () => {
     venueToken = await getToken(VENUE_EMAIL, VENUE_PASS);
+  });
+
+  test.afterAll(async () => {
+    await deleteEvent(eventId, venueToken);
+    await deleteEvent(tmpEventId, venueToken);
   });
 
   test('venue portal is accessible to VenueAdmin', async ({ page }) => {
@@ -219,7 +236,6 @@ test.describe('Venue admin flow', () => {
   });
 
   test('can delete an unpublished ticket type', async () => {
-    // Create a throwaway ticket type then delete it
     const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
     const dayAfter  = new Date(Date.now() + 2 * 86_400_000).toISOString();
     const saleStart = new Date(Date.now() - 3_600_000).toISOString();
@@ -227,7 +243,7 @@ test.describe('Venue admin flow', () => {
       venueId: VENUE_ID, name: `Delete TT Test ${RUN}`,
       description: 'delete test', startsAt: tomorrow, endsAt: dayAfter, saleStartsAt: saleStart,
     }, venueToken);
-    const tmpEventId = evRes.json().id;
+    tmpEventId = evRes.json().id;
 
     const ttRes = await apiPost(`/events/${tmpEventId}/ticket-types`,
       { name: 'To Delete', price: 10, totalQuantity: 5, maxPerOrder: 2 }, venueToken);
@@ -341,6 +357,11 @@ test.describe('Purchase flow', () => {
       userToken
     );
     expect([400, 422]).toContain(res.status());
+  });
+
+  test.afterAll(async () => {
+    // Event has paid tickets after mock-confirm; deleteEvent silently ignores the 409.
+    await deleteEvent(eventId, venueToken);
   });
 });
 
@@ -507,6 +528,7 @@ test.describe('Referral codes', () => {
 
 test.describe('Platform fee', () => {
   let userToken: string;
+  let feeEventId: string;
   let ticketTypeId: string;
 
   test.beforeAll(async () => {
@@ -520,10 +542,15 @@ test.describe('Platform fee', () => {
       { venueId: VENUE_ID, name: `Fee Test ${RUN}`, description: 'platform fee e2e', startsAt: tomorrow, endsAt: dayAfter, saleStartsAt: saleStart },
       venueToken
     );
-    const eventId = evRes.json().id;
-    const ttRes = await apiPost(`/events/${eventId}/ticket-types`, { name: 'GA', price: 10, totalQuantity: 100, maxPerOrder: 10 }, venueToken);
+    feeEventId = evRes.json().id;
+    const ttRes = await apiPost(`/events/${feeEventId}/ticket-types`, { name: 'GA', price: 10, totalQuantity: 100, maxPerOrder: 10 }, venueToken);
     ticketTypeId = ttRes.json().id;
-    await apiPut(`/events/${eventId}/publish`, venueToken);
+    await apiPut(`/events/${feeEventId}/publish`, venueToken);
+  });
+
+  test.afterAll(async () => {
+    const venueToken = await getToken(VENUE_EMAIL, VENUE_PASS);
+    await deleteEvent(feeEventId, venueToken);
   });
 
   test('order with zero platform fee is accepted', async () => {
@@ -553,6 +580,7 @@ test.describe('Platform fee', () => {
 test.describe('Guest OTP checkout', () => {
   const guestPhone = '+15125550199';
   let guestToken: string;
+  let guestEventId: string;
   let ticketTypeId: string;
 
   test.beforeAll(async () => {
@@ -565,10 +593,15 @@ test.describe('Guest OTP checkout', () => {
       { venueId: VENUE_ID, name: `Guest Test ${RUN}`, description: 'guest checkout e2e', startsAt: tomorrow, endsAt: dayAfter, saleStartsAt: saleStart },
       venueToken
     );
-    const eventId = evRes.json().id;
-    const ttRes = await apiPost(`/events/${eventId}/ticket-types`, { name: 'GA', price: 5, totalQuantity: 100, maxPerOrder: 10 }, venueToken);
+    guestEventId = evRes.json().id;
+    const ttRes = await apiPost(`/events/${guestEventId}/ticket-types`, { name: 'GA', price: 5, totalQuantity: 100, maxPerOrder: 10 }, venueToken);
     ticketTypeId = ttRes.json().id;
-    await apiPut(`/events/${eventId}/publish`, venueToken);
+    await apiPut(`/events/${guestEventId}/publish`, venueToken);
+  });
+
+  test.afterAll(async () => {
+    const venueToken = await getToken(VENUE_EMAIL, VENUE_PASS);
+    await deleteEvent(guestEventId, venueToken);
   });
 
   test('request-otp returns devCode in mock mode', async () => {
@@ -848,6 +881,8 @@ test.describe('Event thumbnails', () => {
     thumbEventId = res.json().id;
   });
 
+  test.afterAll(async () => { await deleteEvent(thumbEventId, ownerToken); });
+
   test('can upload a thumbnail (data-URL stored in dev)', async () => {
     if (!thumbEventId || !ownerToken) return;
     // Create a minimal 1×1 PNG as a Blob
@@ -950,6 +985,8 @@ test.describe('Regression: Manage event page (no 404)', () => {
     const body = await res.json();
     expect(body.name).toContain(`Updated ${RUN}`);
   });
+
+  test.afterAll(async () => { await deleteEvent(eventId, ownerToken); });
 });
 
 test.describe('Regression: AppOwner venue creation', () => {
@@ -1014,82 +1051,118 @@ test.describe('Regression: Thumbnail renders after upload', () => {
     await page.goto(`/events/${ev.slug}`);
     await expect(page.locator('img[alt*="thumbnail"], img[class*="thumb"], .event-thumb, img').first()).toBeVisible({ timeout: 8_000 });
   });
+
+  test.afterAll(async () => { await deleteEvent(thumbEventId, ownerToken); });
 });
 
 test.describe('Event type filtering', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/events');
-    await page.waitForLoadState('networkidle');
+  // These tests create their own events so they are not dependent on seed data.
+  let venueTokenFilter: string;
+  let comedyEventId: string;
+  let musicEventId: string;
+  let comedyEventSlug: string;
+  let musicEventSlug: string;
+
+  test.beforeAll(async () => {
+    venueTokenFilter = await getToken(VENUE_EMAIL, VENUE_PASS);
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
+    const dayAfter = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const saleStart = new Date(Date.now() - 3_600_000).toISOString();
+
+    // Create comedy event
+    const comedyRes = await apiPost('/events', {
+      venueId: VENUE_ID,
+      name: `Filter Test Comedy ${RUN}`,
+      description: 'comedy filter test',
+      startsAt: tomorrow,
+      endsAt: dayAfter,
+      saleStartsAt: saleStart,
+      eventType: 'comedy',
+    }, venueTokenFilter);
+    comedyEventId = comedyRes.json().id;
+    comedyEventSlug = comedyRes.json().slug;
+    await apiPost(`/events/${comedyEventId}/ticket-types`, { name: 'GA', price: 10, totalQuantity: 50, maxPerOrder: 4 }, venueTokenFilter);
+    await apiPut(`/events/${comedyEventId}/publish`, venueTokenFilter);
+
+    // Create music event
+    const musicRes = await apiPost('/events', {
+      venueId: VENUE_ID,
+      name: `Filter Test Music ${RUN}`,
+      description: 'music filter test',
+      startsAt: tomorrow,
+      endsAt: dayAfter,
+      saleStartsAt: saleStart,
+      eventType: 'music',
+    }, venueTokenFilter);
+    const musicId = musicRes.json().id;
+    await apiPost(`/events/${musicId}/ticket-types`, { name: 'GA', price: 10, totalQuantity: 50, maxPerOrder: 4 }, venueTokenFilter);
+    await apiPut(`/events/${musicId}/publish`, venueTokenFilter);
+    musicEventSlug = musicRes.json().slug;
   });
 
-  test('shows events of all types by default', async ({ page }) => {
-    // No filter selected — should show event cards
-    const cards = page.locator('.event-card');
-    await expect(cards.first()).toBeVisible({ timeout: 10000 });
-    // The type filter dropdown should show "All Types"
+  test('type filter dropdown defaults to All Types with value ""', async ({ page }) => {
+    await page.goto('/events');
+    await page.waitForLoadState('networkidle');
     const typeSelect = page.locator('select.filter-select').first();
+    await expect(typeSelect).toBeVisible();
     await expect(typeSelect).toHaveValue('');
   });
 
-  test('type filter dropdown has expected options', async ({ page }) => {
-    const typeSelect = page.locator('select.filter-select').first();
-    await expect(typeSelect).toBeVisible();
-    // Should have at least an "All Types" option
-    const allOption = typeSelect.locator('option[value=""]');
-    await expect(allOption).toHaveCount(1);
-  });
-
-  test('filtering by a specific type shows only matching events', async ({ page }) => {
-    // Wait for events to load
-    await expect(page.locator('.event-card').first()).toBeVisible({ timeout: 10000 });
-
-    const typeSelect = page.locator('select.filter-select').first();
-    // Get available options (skip empty "All Types")
-    const options = await typeSelect.locator('option').allInnerTexts();
-    const nonEmptyOptions = options.filter(o => o.toLowerCase() !== 'all types' && o.trim() !== '');
-
-    if (nonEmptyOptions.length === 0) {
-      // No typed events seeded yet — skip
-      test.skip();
-      return;
-    }
-
-    // Select the first non-empty option
-    const firstType = await typeSelect.locator('option:not([value=""])').first().getAttribute('value');
-    if (!firstType) { test.skip(); return; }
-
-    await typeSelect.selectOption(firstType);
+  test('All Types filter shows events of multiple types simultaneously', async ({ page }) => {
+    await page.goto('/events');
     await page.waitForLoadState('networkidle');
 
-    // Either shows filtered cards or shows empty state — both are valid
-    const cards = page.locator('.event-card');
-    const empty = page.locator('.empty-state, .no-events, [class*="empty"]');
-    const eitherVisible = await Promise.race([
-      cards.first().waitFor({ timeout: 5000 }).then(() => true).catch(() => false),
-      empty.first().waitFor({ timeout: 5000 }).then(() => true).catch(() => false),
-    ]);
-    expect(eitherVisible).toBeTruthy();
+    // Ensure no type filter is active
+    const typeSelect = page.locator('select.filter-select').first();
+    await expect(typeSelect).toHaveValue('');
+
+    // Both the comedy and music events we created should be visible
+    await expect(page.locator(`.event-card:has-text("Filter Test Comedy ${RUN}")`)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`.event-card:has-text("Filter Test Music ${RUN}")`)).toBeVisible({ timeout: 10000 });
   });
 
-  test('clearing filters shows all events again', async ({ page }) => {
-    // Wait for initial load
-    await expect(page.locator('.event-card').first()).toBeVisible({ timeout: 10000 });
-
-    const typeSelect = page.locator('select.filter-select').first();
-    const firstOption = await typeSelect.locator('option:not([value=""])').first().getAttribute('value');
-
-    if (!firstOption) { test.skip(); return; }
-
-    // Apply filter
-    await typeSelect.selectOption(firstOption);
+  test('comedy type filter shows comedy events and hides music events', async ({ page }) => {
+    await page.goto('/events');
     await page.waitForLoadState('networkidle');
 
-    // Clear filter — select "All Types"
+    const typeSelect = page.locator('select.filter-select').first();
+    await typeSelect.selectOption('comedy');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator(`.event-card:has-text("Filter Test Comedy ${RUN}")`)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`.event-card:has-text("Filter Test Music ${RUN}")`)).not.toBeVisible();
+  });
+
+  test('music type filter shows music events and hides comedy events', async ({ page }) => {
+    await page.goto('/events');
+    await page.waitForLoadState('networkidle');
+
+    const typeSelect = page.locator('select.filter-select').first();
+    await typeSelect.selectOption('music');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator(`.event-card:has-text("Filter Test Music ${RUN}")`)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`.event-card:has-text("Filter Test Comedy ${RUN}")`)).not.toBeVisible();
+  });
+
+  test('clearing type filter back to All Types shows all event types again', async ({ page }) => {
+    await page.goto('/events');
+    await page.waitForLoadState('networkidle');
+
+    const typeSelect = page.locator('select.filter-select').first();
+
+    // Apply comedy filter
+    await typeSelect.selectOption('comedy');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator(`.event-card:has-text("Filter Test Music ${RUN}")`)).not.toBeVisible();
+
+    // Reset to All Types
     await typeSelect.selectOption('');
     await page.waitForLoadState('networkidle');
 
-    // Should show events again (or clear filter button disappears)
-    const cards = page.locator('.event-card');
-    await expect(cards.first()).toBeVisible({ timeout: 8000 });
+    // Both types must be visible again
+    await expect(page.locator(`.event-card:has-text("Filter Test Comedy ${RUN}")`)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`.event-card:has-text("Filter Test Music ${RUN}")`)).toBeVisible({ timeout: 10000 });
+    await expect(typeSelect).toHaveValue('');
   });
 });

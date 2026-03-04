@@ -17,4 +17,11 @@ public class StripePaymentProvider(IConfiguration config) : IPaymentProvider
         });
         return new PaymentIntentResult(intent.ClientSecret!, intent.Id);
     }
+
+    public async Task RefundAsync(string paymentIntentId)
+    {
+        StripeConfiguration.ApiKey = config["Stripe:SecretKey"];
+        var service = new RefundService();
+        await service.CreateAsync(new RefundCreateOptions { PaymentIntent = paymentIntentId });
+    }
 }

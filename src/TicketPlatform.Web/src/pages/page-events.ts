@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
+import { live } from 'lit/directives/live.js';
 import { api } from '../services/api.js';
 import { navigate } from '../services/auth.js';
 import { icons } from '../services/icons.js';
@@ -354,15 +355,17 @@ export class PageEvents extends LitElement {
 
       <div class="filter-bar">
         <select class="filter-select ${this._typeFilter ? 'filter-active' : ''}"
+          .value=${live(this._typeFilter)}
           @change=${(e: any) => this._setType(e.target.value)}>
-          <option value="" ?selected=${!this._typeFilter}>All Types</option>
-          ${typeOptions.map(t => html`<option value=${t} ?selected=${this._typeFilter === t}>${this._cap(t)}</option>`)}
+          <option value="">All Types</option>
+          ${typeOptions.map(t => html`<option value=${t}>${this._cap(t)}</option>`)}
         </select>
         <select class="filter-select ${this._dateFilter ? 'filter-active' : ''}"
+          .value=${live(this._dateFilter)}
           @change=${(e: any) => this._setDate(e.target.value)}>
-          <option value="" ?selected=${!this._dateFilter}>All Dates</option>
-          <option value="today" ?selected=${this._dateFilter === 'today'}>Today</option>
-          <option value="upcoming" ?selected=${this._dateFilter === 'upcoming'}>Upcoming</option>
+          <option value="">All Dates</option>
+          <option value="today">Today</option>
+          <option value="upcoming">Upcoming</option>
         </select>
         <button class="filter-btn ${this._hotFilter ? 'filter-active' : ''}" @click=${this._toggleHot}>🔥 Hot</button>
         <button class="filter-btn ${this._dropFilter ? 'filter-active' : ''}" @click=${() => this._toggleDrop()}>🎟 Dropping Soon</button>

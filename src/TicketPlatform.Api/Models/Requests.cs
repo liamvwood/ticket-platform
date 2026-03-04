@@ -59,6 +59,9 @@ public record EventResponseDto(
     string EventType,
     bool IsHot,
     bool TicketsDroppingSoon,
+    bool IsCancelled,
+    string? CancellationReason,
+    DateTimeOffset? FundsReleasedAt,
     TicketPlatform.Core.Entities.Venue? Venue,
     ICollection<TicketPlatform.Core.Entities.TicketType>? TicketTypes);
 
@@ -68,3 +71,5 @@ public record EventsPagedResult(
     int PageSize,
     int TotalCount,
     int TotalPages);
+
+public record CancelEventRequest(string? Reason);

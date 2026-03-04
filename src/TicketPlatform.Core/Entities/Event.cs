@@ -17,6 +17,12 @@ public class Event
     public string? RecurringRule { get; set; }
     public string EventType { get; set; } = "other";
 
+    public bool IsCancelled { get; set; }
+    public DateTimeOffset? CancelledAt { get; set; }
+    public string? CancellationReason { get; set; }
+    /// <summary>Set by AppOwner after the event ends to release held funds to the venue.</summary>
+    public DateTimeOffset? FundsReleasedAt { get; set; }
+
     public Venue Venue { get; set; } = null!;
     public ICollection<TicketType> TicketTypes { get; set; } = [];
 }
