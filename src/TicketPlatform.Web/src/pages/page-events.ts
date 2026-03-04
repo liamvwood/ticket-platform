@@ -5,12 +5,12 @@ import { navigate } from '../services/auth.js';
 import { icons } from '../services/icons.js';
 
 const DEMO_EVENTS: any[] = [
-  { id: 'demo-1', name: 'Khruangbin at Stubb\'s', venue: { name: 'Stubb\'s Waller Creek Amphitheater' }, startsAt: '2025-08-15T20:00:00Z', ticketTypes: [{ price: 45 }, { price: 85 }], eventType: 'music', _demo: true },
-  { id: 'demo-2', name: 'Gary Clark Jr. Homecoming', venue: { name: 'Moody Center' }, startsAt: '2025-09-06T19:30:00Z', ticketTypes: [{ price: 60 }, { price: 120 }], eventType: 'music', _demo: true },
-  { id: 'demo-3', name: 'Austin City Limits Comedy Night', venue: { name: 'Paramount Theatre' }, startsAt: '2025-07-22T21:00:00Z', ticketTypes: [{ price: 35 }], eventType: 'comedy', _demo: true },
-  { id: 'demo-4', name: 'ACL Fest Early Bird Drop', venue: { name: 'Zilker Park' }, startsAt: '2025-10-03T12:00:00Z', ticketTypes: [{ price: 175 }, { price: 350 }], eventType: 'music', isHot: true, _demo: true },
-  { id: 'demo-5', name: 'Black Pumas Secret Show', venue: { name: 'Parish Underground' }, startsAt: '2025-07-11T22:00:00Z', ticketTypes: [{ price: 25 }], eventType: 'music', ticketsDroppingSoon: true, _demo: true },
-  { id: 'demo-6', name: 'Willie Nelson Picnic', venue: { name: 'Outlaw Ranch' }, startsAt: '2025-07-04T16:00:00Z', ticketTypes: [{ price: 95 }, { price: 180 }], eventType: 'other', _demo: true },
+  { id: 'demo-1', name: 'Khruangbin at Stubb\'s', venue: { name: 'Stubb\'s Waller Creek Amphitheater' }, startsAt: '2026-08-15T20:00:00Z', ticketTypes: [{ price: 45 }, { price: 85 }], eventType: 'music', _demo: true },
+  { id: 'demo-2', name: 'Gary Clark Jr. Homecoming', venue: { name: 'Moody Center' }, startsAt: '2026-09-06T19:30:00Z', ticketTypes: [{ price: 60 }, { price: 120 }], eventType: 'music', _demo: true },
+  { id: 'demo-3', name: 'Austin City Limits Comedy Night', venue: { name: 'Paramount Theatre' }, startsAt: '2026-07-22T21:00:00Z', ticketTypes: [{ price: 35 }], eventType: 'comedy', _demo: true },
+  { id: 'demo-4', name: 'ACL Fest Early Bird Drop', venue: { name: 'Zilker Park' }, startsAt: '2026-10-03T12:00:00Z', ticketTypes: [{ price: 175 }, { price: 350 }], eventType: 'music', isHot: true, _demo: true },
+  { id: 'demo-5', name: 'Black Pumas Secret Show', venue: { name: 'Parish Underground' }, startsAt: '2026-07-11T22:00:00Z', ticketTypes: [{ price: 25 }], eventType: 'music', ticketsDroppingSoon: true, _demo: true },
+  { id: 'demo-6', name: 'Willie Nelson Picnic', venue: { name: 'Outlaw Ranch' }, startsAt: '2026-07-04T16:00:00Z', ticketTypes: [{ price: 95 }, { price: 180 }], eventType: 'other', _demo: true },
 ];
 
 @customElement('page-events')
@@ -214,6 +214,11 @@ export class PageEvents extends LitElement {
         this._total = result.total;
         this._page = result.page;
         this._isDemo = false;
+      } else if (!this._typeFilter && !this._dateFilter && !this._hotFilter && this._tab === 'upcoming') {
+        // No real events + no active filters → show demo events so the page is never empty by default
+        this._events = DEMO_EVENTS;
+        this._isDemo = true;
+        this._total = DEMO_EVENTS.length;
       } else {
         this._events = [];
         this._total = 0;
