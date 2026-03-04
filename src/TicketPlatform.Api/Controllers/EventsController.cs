@@ -113,7 +113,12 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
             StartsAt = req.StartsAt,
             EndsAt = req.EndsAt,
             SaleStartsAt = req.SaleStartsAt,
-            IsPublished = false
+            IsPublished = false,
+            RecurringRule = req.RecurringRule?.ToUpperInvariant() switch
+            {
+                "WEEKLY" or "BIWEEKLY" or "MONTHLY" => req.RecurringRule.ToUpperInvariant(),
+                _ => null
+            }
         };
         ev.Slug = SlugHelper.Generate(ev.Name, ev.Id);
 

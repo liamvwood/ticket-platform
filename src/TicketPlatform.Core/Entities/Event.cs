@@ -13,6 +13,8 @@ public class Event
     public DateTimeOffset SaleStartsAt { get; set; }
     public bool IsPublished { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    // Optional recurrence: WEEKLY, BIWEEKLY, MONTHLY, or null for one-time
+    public string? RecurringRule { get; set; }
 
     public Venue Venue { get; set; } = null!;
     public ICollection<TicketType> TicketTypes { get; set; } = [];

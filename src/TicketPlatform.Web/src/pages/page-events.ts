@@ -62,6 +62,13 @@ export class PageEvents extends LitElement {
     .thumb-default { background: linear-gradient(135deg, #0d1a15 0%, #312e81 100%); }
     .event-body { padding: 1.25rem; }
     .event-name { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; line-height: 1.3; }
+    .recurring-badge {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      background: #0d1a15; border: 1px solid #00FF8833; color: #00FF88;
+      border-radius: 999px; padding: 0.1rem 0.55rem;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; margin-bottom: 0.4rem;
+    }
     .event-meta-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: #6b7a8d; margin-bottom: 0.4rem; }
     .event-meta-row svg { flex-shrink: 0; }
     .event-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; }
@@ -240,6 +247,7 @@ export class PageEvents extends LitElement {
             </div>
             <div class="event-body">
               <div class="event-name">${ev.name}</div>
+              ${ev.recurringRule ? html`<div class="recurring-badge">↻ ${ev.recurringRule.charAt(0) + ev.recurringRule.slice(1).toLowerCase()}</div>` : ''}
               <div class="event-meta-row">
                 <span .innerHTML=${icons.mapPin}></span>
                 ${ev.venue?.name ?? 'Austin, TX'}

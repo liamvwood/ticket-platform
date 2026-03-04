@@ -16,7 +16,8 @@ public record CreateEventRequest(
     string Description,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
-    DateTimeOffset SaleStartsAt);
+    DateTimeOffset SaleStartsAt,
+    string? RecurringRule = null);
 
 public record CreateTicketTypeRequest(
     string Name,

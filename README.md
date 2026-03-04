@@ -24,6 +24,9 @@ A full-stack ticketing platform built for live music, comedy, and events venues.
 - **Event thumbnails** — upload a cover image per event, stored in Amazon S3; displayed on the event listing and detail page
 - **QR scanner app** — mobile-friendly camera-based scanner with instant Valid / Duplicate / Invalid / Refunded status
 - **Referral attribution** — see which orders came from word-of-mouth referral links
+- **Recurring events** — mark events as Weekly, Biweekly, or Monthly with a recurring badge on listings and detail pages
+- **Social sharing** — one-click share modal per event with pre-composed posts for X (Twitter), Facebook, LinkedIn, and copy-to-clipboard
+- **Admin area indicators** — orange "⚙ Admin Area" banner on all admin pages to clearly distinguish admin vs. public views
 
 ### Platform
 - **Event slugs** — human-readable URLs (`/events/black-pumas-stubbs-a1b2c3d4`) instead of UUIDs
@@ -35,7 +38,9 @@ A full-stack ticketing platform built for live music, comedy, and events venues.
 - **Reverse proxy** — nginx in front of frontend and API for rate limiting and DDoS mitigation
 - **Observability** — Prometheus metrics exported from the API; four Grafana dashboards (API requests, outbound HTTP, cluster resources, business metrics)
 - **Auto-confirm orders** — in test/dev (`Payment:Provider=Mock`), pending orders auto-confirm after 10 seconds so testers don't need to manually call `/mock-confirm`
-- **Favicon** — purple gradient ticket SVG icon
+- **Favicon** — green ticket SVG icon matching Slingshot brand
+- **Buy flow** — single consolidated "Buy Tickets →" CTA at the bottom of the event page; select ticket type by clicking the row, adjust qty inline
+- **Engaging descriptions** — event descriptions render with lead paragraph (pull-quote style) and multi-paragraph support
 
 ---
 

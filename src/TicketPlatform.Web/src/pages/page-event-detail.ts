@@ -16,14 +16,33 @@ export class PageEventDetail extends LitElement {
     .header h1 { font-size: 2.2rem; font-weight: 900; margin-bottom: 0.5rem; }
     .meta { display: flex; gap: 1.5rem; flex-wrap: wrap; color: #6b7a8d; font-size: 0.9rem; margin-bottom: 1rem; }
     .meta span { display: flex; align-items: center; gap: 0.4rem; }
-    .desc { color: #aaa; line-height: 1.8; margin-bottom: 2rem; }
+    .desc {
+      line-height: 1.85;
+      margin-bottom: 2rem;
+      font-size: 1.05rem;
+      color: #c8cdd6;
+    }
+    .desc-para { margin-bottom: 1.2em; }
+    .desc-para:last-child { margin-bottom: 0; }
+    .desc-lead {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #F5F5F5;
+      line-height: 1.65;
+      margin-bottom: 1.2em;
+      border-left: 3px solid #00FF88;
+      padding-left: 1.1rem;
+    }
     h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem; }
     .ticket-types { display: flex; flex-direction: column; gap: 1rem; }
     .tt-row {
       background: #111820; border: 1px solid #1e2836; border-radius: 12px;
       padding: 1.25rem 1.5rem; display: flex; align-items: center;
       justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+      cursor: pointer; transition: border-color 0.2s;
     }
+    .tt-row:hover { border-color: #00FF8844; }
+    .tt-row.selected { border-color: #00FF88; background: #0d1a15; }
     .tt-info h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; }
     .tt-info p { font-size: 0.85rem; color: #6b7a8d; }
     .tt-right { display: flex; align-items: center; gap: 1.5rem; }
@@ -56,8 +75,31 @@ export class PageEventDetail extends LitElement {
       color: #22c55e; padding: 0.75rem 1.5rem;
       border-radius: 10px; font-weight: 600; z-index: 999;
     }
-    /* Share copied toast */
-    .toast-copy {
+    .buy-cta {
+      margin-top: 2rem;
+      padding: 2rem;
+      background: #111820;
+      border: 1px solid #1e2836;
+      border-radius: 16px;
+    }
+    .buy-cta-total { font-size: 0.9rem; color: #6b7a8d; margin-bottom: 0.75rem; }
+    .buy-cta-total strong { color: #F5F5F5; font-size: 1.15rem; }
+    .buy-cta .btn-buy {
+      width: 100%; background: #00FF88; color: #0b0f14;
+      padding: 1rem; border-radius: 12px; font-weight: 800;
+      font-size: 1.05rem; cursor: pointer; border: none;
+      font-family: inherit; transition: background 0.2s;
+    }
+    .buy-cta .btn-buy:hover:not(:disabled) { background: #00d474; }
+    .buy-cta .btn-buy:disabled { opacity: 0.4; cursor: not-allowed; }
+    .buy-cta-hint { text-align: center; font-size: 0.78rem; color: #555568; margin-top: 0.5rem; }
+    .recurring-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      background: #0d1a15; border: 1px solid #00FF8833; color: #00FF88;
+      border-radius: 999px; padding: 0.25rem 0.75rem;
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; margin-bottom: 0.75rem;
+    }
       background: #1a1a2e; border-color: #00FF88; color: #a89cff;
     }
     /* Modal overlay */
@@ -137,6 +179,7 @@ export class PageEventDetail extends LitElement {
   @state() error = '';
   @state() quantities: Record<string, number> = {};
   @state() ordering: Record<string, boolean> = {};
+  @state() selectedTtId: string | null = null;
   @state() toast = '';
   @state() toastClass = '';
 
@@ -169,6 +212,9 @@ export class PageEventDetail extends LitElement {
       const q: Record<string, number> = {};
       this.event?.ticketTypes?.forEach((tt: any) => { q[tt.id] = 1; });
       this.quantities = q;
+      // Auto-select first available ticket type
+      const firstAvail = this.event?.ticketTypes?.find((tt: any) => this._available(tt) > 0);
+      if (firstAvail) this.selectedTtId = firstAvail.id;
       // Update page title + meta for bots that execute JS
       document.title = `${this.event.name} — Slingshot`;
     } catch (e: any) {
@@ -285,6 +331,7 @@ export class PageEventDetail extends LitElement {
         <div class="header-top">
           <div>
             <h1>${ev.name}</h1>
+            ${ev.recurringRule ? html`<div class="recurring-badge">↻ ${ev.recurringRule.charAt(0) + ev.recurringRule.slice(1).toLowerCase()}</div>` : ''}
             <div class="meta">
               <span>📍 ${ev.venue?.name ?? 'Austin, TX'}</span>
               <span>📅 ${new Date(ev.startsAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</span>
@@ -298,7 +345,11 @@ export class PageEventDetail extends LitElement {
             Share
           </button>
         </div>
-        <p class="desc">${ev.description}</p>
+        <div class="desc">
+          ${ev.description?.split('\n').filter(Boolean).map((para: string, i: number) => html`
+            <p class="${i === 0 ? 'desc-lead' : 'desc-para'}">${para}</p>
+          `)}
+        </div>
       </div>
 
       <h2>Tickets</h2>
@@ -307,9 +358,9 @@ export class PageEventDetail extends LitElement {
         ${ev.ticketTypes?.map((tt: any) => {
           const avail = this._available(tt);
           const qty = this.quantities[tt.id] ?? 1;
-          const total = (tt.price * qty + this.platformFee).toFixed(2);
+          const isSelected = this.selectedTtId === tt.id;
           return html`
-            <div class="tt-row">
+            <div class="tt-row ${isSelected ? 'selected' : ''}" @click=${() => { if (avail > 0) { this.selectedTtId = tt.id; this.requestUpdate(); } }}>
               <div class="tt-info">
                 <h3>${tt.name}</h3>
                 <p>Max ${tt.maxPerOrder} per order · ${avail > 0 ? `${avail} left` : 'Sold out'}</p>
@@ -318,13 +369,10 @@ export class PageEventDetail extends LitElement {
                 <div class="price">$${tt.price.toFixed(2)}</div>
                 ${avail > 0 ? html`
                   <div class="qty-row">
-                    <button class="qty-btn" @click=${() => this._setQty(tt.id, -1, tt.maxPerOrder)}>−</button>
+                    <button class="qty-btn" @click=${(e: Event) => { e.stopPropagation(); this._setQty(tt.id, -1, tt.maxPerOrder); }}>−</button>
                     <span class="qty">${qty}</span>
-                    <button class="qty-btn" @click=${() => this._setQty(tt.id, 1, tt.maxPerOrder)}>+</button>
+                    <button class="qty-btn" @click=${(e: Event) => { e.stopPropagation(); this._setQty(tt.id, 1, tt.maxPerOrder); }}>+</button>
                   </div>
-                  <button class="btn" ?disabled=${this.ordering[tt.id]} @click=${() => this._buy(tt)}>
-                    ${this.ordering[tt.id] ? 'Processing…' : `Buy · $${total}`}
-                  </button>
                 ` : html`<div class="sold-out">Sold Out</div>`}
               </div>
             </div>
@@ -350,6 +398,28 @@ export class PageEventDetail extends LitElement {
           <p class="fee-note">No worries — no fees, no hidden charges. Enjoy the show! 🤠</p>
         `}
       </div>
+
+      <!-- Single buy CTA at the bottom -->
+      ${(() => {
+        const selTt = ev.ticketTypes?.find((tt: any) => tt.id === this.selectedTtId);
+        const qty = selTt ? (this.quantities[selTt.id] ?? 1) : 0;
+        const total = selTt ? (selTt.price * qty + this.platformFee).toFixed(2) : '0.00';
+        return html`
+          <div class="buy-cta">
+            ${selTt ? html`
+              <p class="buy-cta-total">
+                ${qty}× ${selTt.name} — <strong>$${total}</strong>
+                ${this.platformFee > 0 ? html` <span style="color:#6b7a8d;font-size:0.85em">(incl. $${this.platformFee} contribution)</span>` : ''}
+              </p>
+            ` : html`<p class="buy-cta-total">Select a ticket type above</p>`}
+            <button class="btn-buy" ?disabled=${(!selTt || this.ordering[this.selectedTtId!]) ?? false}
+              @click=${() => selTt && this._buy(selTt)}>
+              ${selTt && this.ordering[selTt.id] ? 'Processing…' : 'Buy Tickets →'}
+            </button>
+            <p class="buy-cta-hint">Secure checkout · No hidden fees</p>
+          </div>
+        `;
+      })()}
 
       ${this.showModal ? this._renderModal() : ''}
       ${this.toast ? html`<div class="toast ${this.toastClass}">${this.toast}</div>` : ''}

@@ -10,6 +10,13 @@ export class PageVenueNewEvent extends LitElement {
     .back { color: #6b7a8d; cursor: pointer; font-size: 0.9rem; margin-bottom: 2rem; display: inline-flex; align-items: center; gap: .4rem; }
     .back:hover { color: #fff; }
     h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 2rem; }
+    .admin-bar {
+      background: linear-gradient(90deg, #FF5A1F22, #FF5A1F11);
+      border: 1px solid #FF5A1F55; border-radius: 10px;
+      padding: 0.6rem 1.2rem; display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 2rem; font-size: 0.85rem; color: #FF5A1F; font-weight: 600;
+    }
+    .admin-bar-dot { width: 8px; height: 8px; border-radius: 50%; background: #FF5A1F; flex-shrink: 0; }
     .card { background: #111820; border: 1px solid #1e2836; border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; }
     .card h2 { font-size: 1rem; font-weight: 700; color: #00FF88; margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: .05em; }
     .field { margin-bottom: 1.25rem; }
@@ -82,6 +89,7 @@ export class PageVenueNewEvent extends LitElement {
   @state() startsAt = '';
   @state() endsAt = '';
   @state() saleStartsAt = '';
+  @state() recurringRule = '';
   @state() venueId = '';
 
   // Ticket type fields
@@ -133,6 +141,7 @@ export class PageVenueNewEvent extends LitElement {
         startsAt: new Date(this.startsAt).toISOString(),
         endsAt: new Date(this.endsAt).toISOString(),
         saleStartsAt: new Date(this.saleStartsAt).toISOString(),
+        recurringRule: this.recurringRule || undefined,
       });
       this.createdEventId = ev.id;
       this.step = 'tickets';
@@ -207,6 +216,7 @@ export class PageVenueNewEvent extends LitElement {
     const isOwner = auth.role === 'AppOwner';
     return html`
       <div class="back" @click=${() => navigate('/venue')}>← Back to Portal</div>
+      <div class="admin-bar"><div class="admin-bar-dot"></div>⚙ Admin Area — Create New Event</div>
       <h1>Create New Event</h1>
 
       <div class="step-indicator">
@@ -276,6 +286,16 @@ export class PageVenueNewEvent extends LitElement {
             <div class="field">
               <label>Sale Starts At</label>
               <input type="datetime-local" .value=${this.saleStartsAt} @input=${(e: any) => this.saleStartsAt = e.target.value} required />
+            </div>
+            <div class="field">
+              <label>Recurrence (optional)</label>
+              <select .value=${this.recurringRule} @change=${(e: any) => this.recurringRule = e.target.value}
+                style="background:#111820;border:1px solid #1e2836;color:#F5F5F5;padding:0.65rem 0.9rem;border-radius:8px;font-size:0.95rem;font-family:inherit;width:100%">
+                <option value="">One-time event</option>
+                <option value="WEEKLY">Weekly</option>
+                <option value="BIWEEKLY">Biweekly (every 2 weeks)</option>
+                <option value="MONTHLY">Monthly</option>
+              </select>
             </div>
           </div>
           <button class="btn" type="submit" ?disabled=${this.loading}>

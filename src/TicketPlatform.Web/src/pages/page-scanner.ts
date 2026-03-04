@@ -12,6 +12,13 @@ export class PageScanner extends LitElement {
   static styles = css`
     :host { display: block; padding: 2rem; max-width: 560px; margin: 0 auto; }
     h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .admin-bar {
+      background: linear-gradient(90deg, #FF5A1F22, #FF5A1F11);
+      border: 1px solid #FF5A1F55; border-radius: 10px;
+      padding: 0.6rem 1.2rem; display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 2rem; font-size: 0.85rem; color: #FF5A1F; font-weight: 600;
+    }
+    .admin-bar-dot { width: 8px; height: 8px; border-radius: 50%; background: #FF5A1F; flex-shrink: 0; }
     .sub { color: #6b7a8d; margin-bottom: 2rem; }
     .scanner-box {
       background: #111820;
@@ -150,6 +157,7 @@ export class PageScanner extends LitElement {
     `;
 
     return html`
+      <div class="admin-bar"><div class="admin-bar-dot"></div>⚙ Admin Area — Ticket Scanner</div>
       <h1>Ticket Scanner</h1>
       <p class="sub">Scan QR codes or enter a token manually to validate tickets.</p>
 

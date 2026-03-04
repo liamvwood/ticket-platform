@@ -28,6 +28,13 @@ export class PageAdminInvites extends LitElement {
   static styles = css`
     :host { display: block; padding: 2rem; max-width: 800px; margin: 0 auto; }
     h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.25rem; }
+    .admin-bar {
+      background: linear-gradient(90deg, #FF5A1F22, #FF5A1F11);
+      border: 1px solid #FF5A1F55; border-radius: 10px;
+      padding: 0.6rem 1.2rem; display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 2rem; font-size: 0.85rem; color: #FF5A1F; font-weight: 600;
+    }
+    .admin-bar-dot { width: 8px; height: 8px; border-radius: 50%; background: #FF5A1F; flex-shrink: 0; }
     .sub { color: #6b7a8d; margin-bottom: 2rem; font-size: 0.95rem; }
     .card { background: #111820; border: 1px solid #1e2836; border-radius: 14px; padding: 1.75rem; margin-bottom: 1.5rem; }
     .card h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.25rem; }
@@ -165,6 +172,7 @@ export class PageAdminInvites extends LitElement {
 
   render() {
     return html`
+      <div class="admin-bar"><div class="admin-bar-dot"></div>⚙ Admin Area — Venue Management</div>
       <h1>Venue Invites</h1>
       <p class="sub">Generate invite links to onboard new venue owners. Each link is single-use and expires in 7 days.</p>
 
