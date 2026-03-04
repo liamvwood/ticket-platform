@@ -1039,7 +1039,7 @@ test.describe('Event type filtering', () => {
     await expect(typeSelect).toBeVisible();
     // Should have at least an "All Types" option
     const allOption = typeSelect.locator('option[value=""]');
-    await expect(allOption).toBeVisible();
+    await expect(allOption).toHaveCount(1);
   });
 
   test('filtering by a specific type shows only matching events', async ({ page }) => {
