@@ -8,6 +8,7 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 
 const API = process.env.E2E_API_URL ?? 'http://localhost:8080';
 const OWNER_EMAIL = 'owner@slingshot.dev';
@@ -16,6 +17,8 @@ const VENUE_EMAIL = 'venue@slingshot.dev';
 const VENUE_PASS = 'Password123!';
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
+// __dirname equivalent for ES modules
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCREENSHOT_DIR = path.join(__dirname, 'screenshots', 'mobile');
 
 async function getToken(email: string, pass: string): Promise<string> {
