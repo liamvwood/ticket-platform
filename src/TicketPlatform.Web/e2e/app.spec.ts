@@ -467,6 +467,7 @@ test.describe('Event slugs', () => {
   async function getAllEvents() {
     const res = await apiGet('/events?pageSize=100');
     const body = res.json() as any;
+    if (!body) return [];
     return Array.isArray(body) ? body : (body.items ?? []);
   }
 
@@ -1065,8 +1066,10 @@ test.describe('Event type filtering', () => {
 
   test.beforeAll(async () => {
     venueTokenFilter = await getToken(VENUE_EMAIL, VENUE_PASS);
-    const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
-    const dayAfter = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    // Use a start time only 5 minutes from now so these events sort to the
+    // very top of the upcoming list regardless of how many other events exist.
+    const soonStart = new Date(Date.now() + 5 * 60_000).toISOString();
+    const soonEnd   = new Date(Date.now() + 65 * 60_000).toISOString();
     const saleStart = new Date(Date.now() - 3_600_000).toISOString();
 
     // Create comedy event
@@ -1074,8 +1077,8 @@ test.describe('Event type filtering', () => {
       venueId: VENUE_ID,
       name: `Filter Test Comedy ${RUN}`,
       description: 'comedy filter test',
-      startsAt: tomorrow,
-      endsAt: dayAfter,
+      startsAt: soonStart,
+      endsAt: soonEnd,
       saleStartsAt: saleStart,
       eventType: 'comedy',
     }, venueTokenFilter);
@@ -1089,14 +1092,14 @@ test.describe('Event type filtering', () => {
       venueId: VENUE_ID,
       name: `Filter Test Music ${RUN}`,
       description: 'music filter test',
-      startsAt: tomorrow,
-      endsAt: dayAfter,
+      startsAt: soonStart,
+      endsAt: soonEnd,
       saleStartsAt: saleStart,
       eventType: 'music',
     }, venueTokenFilter);
-    const musicId = musicRes.json().id;
-    await apiPost(`/events/${musicId}/ticket-types`, { name: 'GA', price: 10, totalQuantity: 50, maxPerOrder: 4 }, venueTokenFilter);
-    await apiPut(`/events/${musicId}/publish`, venueTokenFilter);
+    musicEventId = musicRes.json().id;
+    await apiPost(`/events/${musicEventId}/ticket-types`, { name: 'GA', price: 10, totalQuantity: 50, maxPerOrder: 4 }, venueTokenFilter);
+    await apiPut(`/events/${musicEventId}/publish`, venueTokenFilter);
     musicEventSlug = musicRes.json().slug;
   });
 
