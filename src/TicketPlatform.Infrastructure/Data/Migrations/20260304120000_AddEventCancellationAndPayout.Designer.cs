@@ -11,7 +11,6 @@ using TicketPlatform.Infrastructure.Data;
 namespace TicketPlatform.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial [DbContext(typeof(AppDbContext))]
     [Migration("20260304120000_AddEventCancellationAndPayout")]
     partial class AddEventCancellationAndPayout
     {
