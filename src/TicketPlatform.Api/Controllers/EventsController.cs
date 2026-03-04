@@ -254,17 +254,6 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         return NoContent();
     }
 
-    [HttpPut("{id:guid}/unpublish")]
-    [Authorize(Roles = "VenueAdmin,AppOwner")]
-    public async Task<IActionResult> Unpublish(Guid id)
-    {
-        var ev = await db.Events.FindAsync(id);
-        if (ev is null) return NotFound();
-        ev.IsPublished = false;
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
     // POST /events/{id}/cancel — cancel event and refund all paid orders
     [HttpPost("{id:guid}/cancel")]
     [Authorize(Roles = "VenueAdmin,AppOwner")]
