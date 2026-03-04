@@ -128,6 +128,23 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         return CreatedAtAction(nameof(GetById), new { id = ev.Id }, ev);
     }
 
+    // PATCH /events/{id} — update editable event fields
+    [HttpPatch("{id:guid}")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateEventRequest req)
+    {
+        var ev = await db.Events.FindAsync(id);
+        if (ev is null) return NotFound();
+
+        if (!string.IsNullOrWhiteSpace(req.Name)) { ev.Name = req.Name.Trim(); ev.Slug = SlugHelper.Generate(ev.Name, ev.Id); }
+        if (!string.IsNullOrWhiteSpace(req.Description)) ev.Description = req.Description.Trim();
+        if (req.StartsAt.HasValue) ev.StartsAt = req.StartsAt.Value;
+        if (req.EndsAt.HasValue) ev.EndsAt = req.EndsAt.Value;
+
+        await db.SaveChangesAsync();
+        return Ok(new { ev.Id, ev.Name, ev.Description, ev.StartsAt, ev.EndsAt, ev.IsPublished });
+    }
+
     // POST /events/{id}/thumbnail — multipart file upload (JPEG/PNG/WebP)
     [HttpPost("{id:guid}/thumbnail")]
     [Authorize(Roles = "VenueAdmin,AppOwner")]

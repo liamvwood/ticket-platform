@@ -83,7 +83,7 @@ export class PageScanner extends LitElement {
 
   get _canScan() {
     const r = auth.role;
-    return r === 'Scanner' || r === 'VenueAdmin';
+    return r === 'Scanner' || r === 'VenueAdmin' || r === 'AppOwner';
   }
 
   disconnectedCallback() {
@@ -145,14 +145,14 @@ export class PageScanner extends LitElement {
     if (!auth.isLoggedIn) return html`
       <div class="auth-warn">
         <h2>Authentication Required</h2>
-        <p>Please <a style="color:#f59e0b;cursor:pointer" @click=${() => navigate('/login')}>log in</a> with a Scanner or VenueAdmin account.</p>
+        <p>Please <a style="color:#f59e0b;cursor:pointer" @click=${() => navigate('/login')}>log in</a> with a Scanner, VenueAdmin, or AppOwner account.</p>
       </div>
     `;
 
     if (!this._canScan) return html`
       <div class="auth-warn">
         <h2>Access Denied</h2>
-        <p>This page requires a Scanner or VenueAdmin role.</p>
+        <p>This page requires a Scanner, VenueAdmin, or AppOwner role.</p>
       </div>
     `;
 

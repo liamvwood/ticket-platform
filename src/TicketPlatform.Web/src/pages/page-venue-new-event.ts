@@ -112,9 +112,9 @@ export class PageVenueNewEvent extends LitElement {
     }
   }
 
-  private async _createVenue(e: Event) {
-    e.preventDefault();
-    if (!this.newVenueName.trim()) return;
+  private async _createVenue(e?: Event) {
+    if (e) e.preventDefault();
+    if (!this.newVenueName.trim()) { this.error = 'Venue name is required.'; return; }
     this.loading = true; this.error = '';
     try {
       const v = await api.createVenue({
@@ -195,7 +195,7 @@ export class PageVenueNewEvent extends LitElement {
       // Upload thumbnail first if selected
       if (this.thumbnailFile) {
         try { await api.uploadEventThumbnail(this.createdEventId, this.thumbnailFile); }
-        catch { /* non-fatal — event still publishes */ }
+        catch (err: any) { this.error = `Thumbnail upload failed: ${err.message}. Event not published.`; this.loading = false; return; }
       }
       await api.publishEvent(this.createdEventId);
       navigate('/venue');
@@ -230,13 +230,13 @@ export class PageVenueNewEvent extends LitElement {
         <form @submit=${this._createEvent}>
           <div class="card">
             <h2>Event Details</h2>
-            ${isOwner ? html`
+              ${isOwner ? html`
               <div class="field">
                 <label>Venue</label>
                 ${this.showNewVenue ? html`
-                  <form @submit=${this._createVenue} style="margin-top:.5rem">
+                  <div style="margin-top:.5rem">
                     <input type="text" placeholder="Venue name *" .value=${this.newVenueName}
-                      @input=${(e: any) => this.newVenueName = e.target.value} required style="margin-bottom:.5rem" />
+                      @input=${(e: any) => this.newVenueName = e.target.value} style="margin-bottom:.5rem" />
                     <input type="text" placeholder="Address" .value=${this.newVenueAddress}
                       @input=${(e: any) => this.newVenueAddress = e.target.value} style="margin-bottom:.5rem" />
                     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem">
@@ -246,11 +246,12 @@ export class PageVenueNewEvent extends LitElement {
                         @input=${(e: any) => this.newVenueState = e.target.value} style="flex:0 0 70px" />
                     </div>
                     <div style="display:flex;gap:.5rem">
-                      <button class="btn" type="submit" ?disabled=${this.loading} style="flex:1">Save Venue</button>
+                      <button class="btn" type="button" ?disabled=${this.loading} style="flex:1"
+                        @click=${this._createVenue}>Save Venue</button>
                       <button class="btn" type="button" style="background:#1e2836;flex:0 0 auto"
                         @click=${() => this.showNewVenue = false}>Cancel</button>
                     </div>
-                  </form>
+                  </div>
                 ` : html`
                   <select .value=${this.venueId} @change=${(e: any) => this.venueId = e.target.value}>
                     ${this.venues.length === 0
@@ -296,6 +297,18 @@ export class PageVenueNewEvent extends LitElement {
                 <option value="BIWEEKLY">Biweekly (every 2 weeks)</option>
                 <option value="MONTHLY">Monthly</option>
               </select>
+            </div>
+            <!-- Thumbnail upload on step 1 so it's visible before publish -->
+            <div class="field">
+              <label>Event Thumbnail <span style="color:#6b7a8d;font-weight:400;font-size:0.85rem">(optional)</span></label>
+              <p style="color:#6b7a8d;font-size:0.85rem;margin:0 0 .5rem">Upload a cover image for the event listing.</p>
+              ${this.thumbnailPreview ? html`
+                <img src=${this.thumbnailPreview} style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-bottom:.5rem" />
+              ` : ''}
+              <label style="display:inline-block;background:#1e1e2e;border:1px dashed #3e3e5e;border-radius:8px;padding:0.65rem 1rem;cursor:pointer;font-size:0.9rem;color:#00FF88">
+                ${this.thumbnailFile ? `📷 ${this.thumbnailFile.name}` : '📷 Choose image…'}
+                <input type="file" accept="image/*" style="display:none" @change=${this._onThumbnailPick} />
+              </label>
             </div>
           </div>
           <button class="btn" type="submit" ?disabled=${this.loading}>
@@ -361,19 +374,6 @@ export class PageVenueNewEvent extends LitElement {
             ` : ''}
           </div>
         </form>
-        <!-- Thumbnail upload (optional) -->
-        <div class="card" style="margin-top:1.5rem">
-          <h2>Event Thumbnail <span style="color:#6b7a8d;font-weight:400;font-size:0.85rem">(optional)</span></h2>
-          <p style="color:#6b7a8d;font-size:0.85rem;margin-bottom:1rem">Upload a cover image that will appear on the event listing.</p>
-          ${this.thumbnailPreview ? html`
-            <img src=${this.thumbnailPreview} style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:1rem" />
-          ` : ''}
-          <label style="display:inline-block;background:#1e1e2e;border:1px dashed #3e3e5e;border-radius:8px;padding:0.75rem 1.25rem;cursor:pointer;font-size:0.9rem;color:#00FF88">
-            ${this.thumbnailFile ? `📷 ${this.thumbnailFile.name}` : '📷 Choose image…'}
-            <input type="file" accept="image/*" style="display:none" @change=${this._onThumbnailPick} />
-          </label>
-          <p style="color:#666;font-size:0.75rem;margin-top:0.5rem">Image will be uploaded when you publish the event.</p>
-        </div>
       `}
     `;
   }

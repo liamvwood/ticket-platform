@@ -877,3 +877,144 @@ test.describe('Event thumbnails', () => {
     expect('thumbnailUrl' in res.json()).toBe(true);
   });
 });
+
+// ─── Regression: Bug fixes ──────────────────────────────────────────────────
+// Tests to prevent regressions for the 5 bugs fixed in this sprint:
+// 1. Thumbnail not rendering after upload
+// 2. App Owner can't load scanner
+// 3. App Owner gets 404 on manage event route
+// 4. App Owner creating new venue returns error
+// 5. Thumbnail upload should be on step 1 of event creation
+
+test.describe('Regression: AppOwner scanner access', () => {
+  test('AppOwner can see scanner UI (not blocked by role check)', async ({ page }) => {
+    const token = await getToken(OWNER_EMAIL, OWNER_PASS);
+    await page.goto('/');
+    await page.evaluate(
+      ([t, e]) => {
+        localStorage.setItem('jwt', t);
+        localStorage.setItem('userEmail', e);
+        localStorage.setItem('userRole', 'AppOwner');
+        window.dispatchEvent(new Event('auth-change'));
+      },
+      [token, OWNER_EMAIL]
+    );
+    await page.goto('/scan');
+    await expect(page.locator('h1')).toContainText('Scanner');
+    await expect(page.locator('button', { hasText: 'Start Camera Scan' })).toBeVisible();
+  });
+});
+
+test.describe('Regression: Manage event page (no 404)', () => {
+  let ownerToken = '';
+  let eventId = '';
+
+  test('setup: create event to manage', async () => {
+    ownerToken = await getToken(OWNER_EMAIL, OWNER_PASS);
+    const venueRes = await apiGet('/venues', ownerToken);
+    const venues = venueRes.json();
+    const venueId = Array.isArray(venues) && venues.length > 0 ? venues[0].id : VENUE_ID;
+    const res = await apiPost('/events', {
+      name: `Manage Test ${RUN}`, description: 'Manage event regression test',
+      startsAt: new Date(Date.now() + 86400000 * 60).toISOString(),
+      endsAt: new Date(Date.now() + 86400000 * 60 + 7200000).toISOString(),
+      saleStartsAt: new Date().toISOString(), venueId,
+    }, ownerToken);
+    expect(res.status()).toBe(201);
+    eventId = res.json().id;
+  });
+
+  test('AppOwner can navigate to /venue/events/:id without 404', async ({ page }) => {
+    if (!eventId || !ownerToken) return;
+    await page.goto('/');
+    await page.evaluate(
+      ([t, e]) => {
+        localStorage.setItem('jwt', t);
+        localStorage.setItem('userEmail', e);
+        localStorage.setItem('userRole', 'AppOwner');
+        window.dispatchEvent(new Event('auth-change'));
+      },
+      [ownerToken, OWNER_EMAIL]
+    );
+    await page.goto(`/venue/events/${eventId}`);
+    // Should render the manage-event page, not a 404 fallback
+    await expect(page.locator('h1')).not.toContainText('404');
+    await expect(page.locator('h1')).not.toContainText('Not Found');
+    await expect(page.locator('.admin-bar')).toBeVisible();
+  });
+
+  test('PATCH /events/:id updates event details', async () => {
+    if (!eventId || !ownerToken) return;
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${ownerToken}` };
+    const res = await fetch(`${API}/events/${eventId}`, {
+      method: 'PATCH', headers, body: JSON.stringify({ name: `Updated ${RUN}` }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.name).toContain(`Updated ${RUN}`);
+  });
+});
+
+test.describe('Regression: AppOwner venue creation', () => {
+  test('POST /venues succeeds for AppOwner', async () => {
+    const token = await getToken(OWNER_EMAIL, OWNER_PASS);
+    const res = await apiPost('/venues', { name: `Regression Venue ${RUN}`, city: 'Austin', state: 'TX' }, token);
+    expect(res.status()).toBe(200);
+    expect(typeof res.json().id).toBe('string');
+  });
+});
+
+test.describe('Regression: Thumbnail renders after upload', () => {
+  let ownerToken = '';
+  let thumbEventId = '';
+
+  test('setup: create and publish event', async () => {
+    ownerToken = await getToken(OWNER_EMAIL, OWNER_PASS);
+    const venueRes = await apiGet('/venues', ownerToken);
+    const venues = venueRes.json();
+    const venueId = Array.isArray(venues) && venues.length > 0 ? venues[0].id : VENUE_ID;
+    const res = await apiPost('/events', {
+      name: `Thumb Render ${RUN}`, description: 'Thumbnail render test',
+      startsAt: new Date(Date.now() + 86400000 * 45).toISOString(),
+      endsAt: new Date(Date.now() + 86400000 * 45 + 7200000).toISOString(),
+      saleStartsAt: new Date().toISOString(), venueId,
+    }, ownerToken);
+    expect(res.status()).toBe(201);
+    thumbEventId = res.json().id;
+    await apiPut(`/events/${thumbEventId}/publish`, ownerToken);
+  });
+
+  test('thumbnail upload returns thumbnailUrl', async () => {
+    if (!thumbEventId || !ownerToken) return;
+    const pngB64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const binary = Buffer.from(pngB64, 'base64');
+    const form = new FormData();
+    form.append('file', new Blob([binary], { type: 'image/png' }), 'thumb.png');
+    const r = await fetch(`${API}/events/${thumbEventId}/thumbnail`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ownerToken}` },
+      body: form,
+    });
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(typeof body.thumbnailUrl).toBe('string');
+    expect(body.thumbnailUrl.length).toBeGreaterThan(0);
+  });
+
+  test('GET /events/:id returns thumbnailUrl after upload', async () => {
+    if (!thumbEventId || !ownerToken) return;
+    const res = await apiGet(`/events/${thumbEventId}`);
+    expect(res.status()).toBe(200);
+    const ev = res.json();
+    expect(ev.thumbnailUrl).toBeTruthy();
+  });
+
+  test('event detail page renders thumbnail img when thumbnailUrl is set', async ({ page }) => {
+    if (!thumbEventId) return;
+    const evRes = await apiGet(`/events/${thumbEventId}`);
+    const ev = evRes.json();
+    if (!ev.thumbnailUrl || !ev.slug) return;
+    await page.goto(`/events/${ev.slug}`);
+    await expect(page.locator('img[alt*="thumbnail"], img[class*="thumb"], .event-thumb, img').first()).toBeVisible({ timeout: 8_000 });
+  });
+});

@@ -38,7 +38,7 @@ public sealed class S3StorageService(IConfiguration config, ILogger<S3StorageSer
             Key = key,
             InputStream = stream,
             ContentType = contentType,
-            CannedACL = S3CannedACL.PublicRead,
+            // Bucket policy handles public reads; CannedACL is incompatible with BucketOwnerEnforced ownership
         };
 
         await s3.PutObjectAsync(req);

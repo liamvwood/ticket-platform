@@ -61,6 +61,8 @@ export const api = {
   // Events
   getEvents: (page = 1, pageSize = 12) => request<any>(`/events?page=${page}&pageSize=${pageSize}`),
   getEventsAdmin: (page = 1, pageSize = 20) => request<any>(`/events/admin?page=${page}&pageSize=${pageSize}`),
+  updateEvent: (id: string, data: { name?: string; description?: string; startsAt?: string; endsAt?: string }) =>
+    request<any>(`/events/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   getEvent: (id: string) => request<any>(`/events/${id}`),
   uploadEventThumbnail: (eventId: string, file: File) => {
     const form = new FormData();

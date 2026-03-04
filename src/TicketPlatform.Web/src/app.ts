@@ -10,6 +10,7 @@ import './pages/page-my-tickets.js';
 import './pages/page-auth.js';
 import './pages/page-venue-dashboard.js';
 import './pages/page-venue-new-event.js';
+import './pages/page-venue-manage-event.js';
 import './pages/page-scanner.js';
 import './pages/page-oauth-callback.js';
 import './pages/page-admin-invites.js';
@@ -53,6 +54,7 @@ export class TpApp extends LitElement {
     { pattern: /^\/invite\/([^/]+)$/, render: m => html`<page-invite-accept .token=${m[1]}></page-invite-accept>` },
     { pattern: /^\/venue(\/)?$/, render: () => html`<page-venue-dashboard></page-venue-dashboard>` },
     { pattern: /^\/venue\/events\/new$/, render: () => html`<page-venue-new-event></page-venue-new-event>` },
+    { pattern: /^\/venue\/events\/([0-9a-f-]{36})$/, render: (m: RegExpMatchArray) => html`<page-venue-manage-event .eventId=${m[1]}></page-venue-manage-event>` },
     { pattern: /^\/scan$/, render: () => html`<page-scanner></page-scanner>` },
   ];
 

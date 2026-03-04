@@ -33,6 +33,12 @@ public record CreateOrderRequest(
     decimal PlatformFee = 0m,
     List<OrderLineItem>? Items = null);
 
+public record UpdateEventRequest(
+    string? Name,
+    string? Description,
+    DateTimeOffset? StartsAt,
+    DateTimeOffset? EndsAt);
+
 public record QrValidationRequest(string Token);
 
 public record EventsPagedResult(
