@@ -279,7 +279,7 @@ export class PageMyTickets extends LitElement {
   private async _share(ticket: any) {
     const ev = ticket.ticketType?.event;
     if (!ev) return;
-    const url = `${location.origin}/events/${ev.id}`;
+    const url = `${location.origin}/events/${ev.slug || ev.id}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: ev.name, text: `I'm going to ${ev.name}! Get your tickets.`, url });
@@ -343,7 +343,22 @@ export class PageMyTickets extends LitElement {
   }
 
   render() {
-    if (this.loading) return html`<div class="loading">Loading tickets…</div>`;
+    if (this.loading) return html`
+      <div style="max-width:680px;margin:0 auto;padding:2rem">
+        <div style="height:2rem;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:8px;margin-bottom:1.75rem;width:40%;animation:shimmer 1.5s infinite"></div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:1.75rem">
+          ${[1,2,3].map(() => `<div style="height:32px;width:80px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:999px;animation:shimmer 1.5s infinite"></div>`).join('')}
+        </div>
+        ${[1,2].map(() => html`
+          <div style="border-radius:20px;overflow:hidden;margin-bottom:2rem;box-shadow:0 8px 32px rgba(0,0,0,0.45)">
+            <div style="height:160px;background:linear-gradient(90deg,#232336 25%,#2a2a40 50%,#232336 75%);background-size:200% 100%;animation:shimmer 1.5s infinite"></div>
+            <div style="height:20px;background:transparent;border-top:1px dashed #1e2836"></div>
+            <div style="height:100px;background:linear-gradient(90deg,#111820 25%,#161624 50%,#111820 75%);background-size:200% 100%;animation:shimmer 1.5s infinite"></div>
+            <div style="height:60px;background:linear-gradient(90deg,#14141e 25%,#1a1a26 50%,#14141e 75%);background-size:200% 100%;animation:shimmer 1.5s infinite"></div>
+          </div>
+        `)}
+        <style>@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
+      </div>`;
 
     const allTickets = this.orders.flatMap((o: any) =>
       (o.tickets ?? []).map((t: any) => ({ ...t, order: o }))
@@ -446,7 +461,7 @@ export class PageMyTickets extends LitElement {
           <button class="action-btn" @click=${() => this._addToCalendar(t)}>
             <span class="action-icon">📅</span>Remind me
           </button>
-          <button class="action-btn" @click=${() => this._openWallet(t.id)}>
+          <button class="action-btn" @click=${() => this._showToast('Wallet passes coming soon!')}>
             <span class="action-icon">💳</span>Wallet
           </button>
           <button class="action-btn" @click=${() => this._openWallet(t.id)}>

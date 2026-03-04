@@ -113,7 +113,16 @@ export class PageCheckout extends LitElement {
   }
 
   render() {
-    if (this.loading) return html`<div class="loading">Loading order…</div>`;
+    if (this.loading) return html`
+      <div style="max-width:700px;margin:0 auto;padding:2rem">
+        <div style="height:2rem;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:8px;margin-bottom:1.5rem;width:50%;animation:shimmer 1.5s infinite"></div>
+        <div style="height:180px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:12px;margin-bottom:1.5rem;animation:shimmer 1.5s infinite"></div>
+        <div style="height:3rem;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:8px;margin-bottom:1rem;width:60%;animation:shimmer 1.5s infinite"></div>
+        <div style="height:1rem;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;margin-bottom:0.5rem;width:40%;animation:shimmer 1.5s infinite"></div>
+        <div style="height:1rem;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;margin-bottom:2rem;width:30%;animation:shimmer 1.5s infinite"></div>
+        <div style="height:3.5rem;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:8px;animation:shimmer 1.5s infinite"></div>
+        <style>@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
+      </div>`;
     if (this.paid) return html`
       <div class="success">
         <div class="icon">🎉</div>
@@ -169,9 +178,9 @@ export class PageCheckout extends LitElement {
       <div class="totals">
         <div class="total-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
         ${platformFee > 0 ? html`
-          <div class="total-row"><span>💜 Platform contribution</span><span>$${platformFee.toFixed(2)}</span></div>
+          <div class="total-row"><span>Slingshot tip 💚</span><span>$${platformFee.toFixed(2)}</span></div>
         ` : ''}
-        <div class="total-row"><span>Processing fee (~3%)</span><span>$${processingFee.toFixed(2)}</span></div>
+        <div class="total-row"><span>Stripe processing fee (~3%)</span><span>$${processingFee.toFixed(2)}</span></div>
         <div class="total-row grand"><span>Total</span><span>$${grandTotal}</span></div>
       </div>
 

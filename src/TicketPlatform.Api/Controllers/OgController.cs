@@ -30,7 +30,9 @@ public class OgController(AppDbContext db) : ControllerBase
 
         var title = $"{ev.Name} — Slingshot";
         var desc = $"{ev.StartsAt:ddd, MMM d 'at' h:mm tt} @ {ev.Venue.Name}. {ev.Description}".Truncate(200);
-        var imageUrl = $"{Request.Scheme}://{Request.Host}/og/events/{ev.Id}/image";
+        var imageUrl = !string.IsNullOrEmpty(ev.ThumbnailUrl)
+            ? ev.ThumbnailUrl
+            : $"{Request.Scheme}://{Request.Host}/og/events/{ev.Id}/image";
         var eventUrl = $"https://slingshot.dev/events/{ev.Slug}";
 
         return Content(MinimalHtml(title, desc, imageUrl, eventUrl), "text/html");

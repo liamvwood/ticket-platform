@@ -226,6 +226,67 @@ npm run test:e2e
 
 ---
 
+## Running Tests Locally
+
+Always run E2E tests locally before pushing to `main` to catch failures early.
+
+### Prerequisites
+
+Ensure the local development stack is running:
+
+```bash
+docker compose up -d
+```
+
+Wait a few seconds for services to start, then verify:
+
+```bash
+curl -s http://localhost:5000/health   # API health check
+```
+
+### Frontend Build Check
+
+```bash
+cd src/TicketPlatform.Web
+npm install
+npm run build
+```
+
+### E2E Tests (Playwright)
+
+```bash
+cd src/TicketPlatform.Web
+export PLAYWRIGHT_BROWSERS_PATH=/home/codespace/.cache/ms-playwright
+npx playwright install chromium --with-deps 2>/dev/null || true
+npm run test:e2e
+```
+
+Tests run against `http://localhost:5174` (frontend) and `http://localhost:5000` (API). Requires the `docker compose` stack to be running.
+
+To run tests with a visible browser (headed mode) for debugging:
+
+```bash
+cd src/TicketPlatform.Web
+PWDEBUG=1 npx playwright test --headed
+```
+
+### API Tests
+
+```bash
+cd src/TicketPlatform.Api
+dotnet test
+```
+
+### Pre-commit Checklist
+
+Before pushing to `main`:
+1. `docker compose up -d` — ensure stack is running
+2. `cd src/TicketPlatform.Web && npm run build` — verify TypeScript compiles
+3. `cd src/TicketPlatform.Web && npm run test:e2e` — all E2E tests should pass
+4. Push to `main` — CI will run the full test suite and deploy if green
+
+---
+
 ## 📊 Observability
 
 Prometheus metrics are scraped from the API's `/metrics` endpoint and visualised in Grafana.

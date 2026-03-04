@@ -194,6 +194,8 @@ export class PageEventDetail extends LitElement {
 
   // Platform fee
   @state() platformFee = 1;
+  @state() private _countdown = '';
+  private _countdownInterval?: ReturnType<typeof setInterval>;
   private readonly feeOptions = [0, 1, 2, 3, 5];
 
   // Referral code from URL
@@ -214,6 +216,7 @@ export class PageEventDetail extends LitElement {
       this.quantities = q;
       // No auto-selection needed — user picks qty to add
       document.title = `${this.event.name} — Slingshot`;
+      this._startCountdown();
     } catch (e: any) {
       this.error = e.message;
     } finally {
@@ -312,8 +315,43 @@ export class PageEventDetail extends LitElement {
     return tt.totalQuantity - tt.quantitySold;
   }
 
+  private _startCountdown() {
+    clearInterval(this._countdownInterval);
+    if (!this.event?.saleStartsAt) return;
+    const saleStart = new Date(this.event.saleStartsAt).getTime();
+    if (saleStart <= Date.now()) return;
+    this._countdownInterval = setInterval(() => {
+      const diff = saleStart - Date.now();
+      if (diff <= 0) {
+        this._countdown = '';
+        clearInterval(this._countdownInterval);
+        this.requestUpdate();
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      this._countdown = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+    }, 1000);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    clearInterval(this._countdownInterval);
+  }
+
   render() {
-    if (this.loading) return html`<div class="loading">Loading event…</div>`;
+    if (this.loading) return html`
+      <div style="max-width:700px;margin:0 auto;padding:2rem">
+        <div style="height:24px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;margin-bottom:1.5rem;width:80px;animation:shimmer 1.5s infinite"></div>
+        <div style="height:280px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:14px;margin-bottom:1.5rem;animation:shimmer 1.5s infinite"></div>
+        <div style="height:2.5rem;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:8px;margin-bottom:1rem;width:70%;animation:shimmer 1.5s infinite"></div>
+        <div style="height:1rem;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;margin-bottom:0.5rem;width:45%;animation:shimmer 1.5s infinite"></div>
+        <div style="height:1rem;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;margin-bottom:2rem;width:55%;animation:shimmer 1.5s infinite"></div>
+        <div style="height:120px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:12px;margin-bottom:1rem;animation:shimmer 1.5s infinite"></div>
+        <div style="height:120px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:12px;animation:shimmer 1.5s infinite"></div>
+        <style>@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
+      </div>`;
     if (this.error) return html`<div class="error">${this.error}</div>`;
     const ev = this.event;
 
@@ -326,7 +364,7 @@ export class PageEventDetail extends LitElement {
 
       <div class="header">
         ${ev.thumbnailUrl ? html`
-          <img src=${ev.thumbnailUrl} alt=${ev.name}
+          <img src=${ev.thumbnailUrl} alt=${ev.name} loading="lazy"
             style="width:100%;max-height:320px;object-fit:cover;border-radius:14px;margin-bottom:1.5rem" />
         ` : ''}
         <div class="header-top">
@@ -426,15 +464,24 @@ export class PageEventDetail extends LitElement {
                 })}
                 ${this.platformFee > 0 ? html`
                   <div style="display:flex;justify-content:space-between;font-size:0.88rem;color:#6b7a8d;padding:0.2rem 0;border-top:1px solid #1e2836;margin-top:0.4rem;padding-top:0.4rem">
-                    <span>Platform contribution</span>
+                    <span>Slingshot tip 💚</span>
                     <span>$${this.platformFee.toFixed(2)}</span>
                   </div>
                 ` : ''}
               </div>
             ` : html`<p class="buy-cta-total" style="margin-bottom:0.75rem">Add tickets above to get started</p>`}
-            <button class="btn-buy" ?disabled=${!hasItems || busy} @click=${() => this._buy()}>
-              ${busy ? 'Processing...' : hasItems ? 'Buy Tickets →' : 'Select Tickets'}
-            </button>
+            ${this.event?.saleStartsAt && new Date(this.event.saleStartsAt) > new Date() ? html`
+              <div style="background:#1a1a2e;border:1px solid #2d2d4e;border-radius:10px;padding:1rem;text-align:center;margin-bottom:0.75rem">
+                <div style="font-weight:700;color:#F5F5F5;margin-bottom:0.25rem">🔒 Tickets not on sale yet</div>
+                <div style="font-size:0.85rem;color:#6b7a8d">Goes on sale ${new Date(this.event.saleStartsAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}</div>
+                ${this._countdown ? html`<div style="font-size:1.3rem;font-weight:900;color:#00FF88;margin-top:0.5rem;font-variant-numeric:tabular-nums">${this._countdown}</div>` : ''}
+              </div>
+              <button class="btn-buy" disabled>Coming Soon</button>
+            ` : html`
+              <button class="btn-buy" ?disabled=${!hasItems || busy} @click=${() => this._buy()}>
+                ${busy ? 'Processing...' : hasItems ? 'Buy Tickets →' : 'Select Tickets'}
+              </button>
+            `}
             <p class="buy-cta-hint">Secure checkout · No hidden fees</p>
           </div>
         `;

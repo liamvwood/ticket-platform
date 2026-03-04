@@ -334,15 +334,15 @@ export class PageEvents extends LitElement {
 
       <div class="filter-bar">
         <select class="filter-select ${this._typeFilter ? 'filter-active' : ''}"
-          .value=${this._typeFilter} @change=${(e: any) => this._setType(e.target.value)}>
-          <option value="">Type ▾</option>
-          ${typeOptions.map(t => html`<option value=${t}>${this._cap(t)}</option>`)}
+          @change=${(e: any) => this._setType(e.target.value)}>
+          <option value="" ?selected=${!this._typeFilter}>All Types</option>
+          ${typeOptions.map(t => html`<option value=${t} ?selected=${this._typeFilter === t}>${this._cap(t)}</option>`)}
         </select>
         <select class="filter-select ${this._dateFilter ? 'filter-active' : ''}"
-          .value=${this._dateFilter} @change=${(e: any) => this._setDate(e.target.value)}>
-          <option value="">Date ▾</option>
-          <option value="today">Today</option>
-          <option value="upcoming">Upcoming</option>
+          @change=${(e: any) => this._setDate(e.target.value)}>
+          <option value="" ?selected=${!this._dateFilter}>All Dates</option>
+          <option value="today" ?selected=${this._dateFilter === 'today'}>Today</option>
+          <option value="upcoming" ?selected=${this._dateFilter === 'upcoming'}>Upcoming</option>
         </select>
         <button class="filter-btn ${this._hotFilter ? 'filter-active' : ''}" @click=${this._toggleHot}>🔥 Hot</button>
         ${hasFilters ? html`<button class="filter-clear" @click=${this._clearFilters}>Clear filters</button>` : ''}
