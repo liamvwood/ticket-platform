@@ -1,5 +1,30 @@
 const API = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:8080';
 
+export interface EventFilters {
+  tab?: 'upcoming' | 'past';
+  type?: string;
+  date?: 'today' | 'upcoming';
+  hot?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface Event {
+  id: string;
+  name: string;
+  description?: string;
+  startsAt: string;
+  endsAt?: string;
+  thumbnailUrl?: string;
+  slug?: string;
+  recurringRule?: string;
+  isHot: boolean;
+  ticketsDroppingSoon: boolean;
+  eventType: string;
+  venue: { id: string; name: string };
+  ticketTypes: Array<{ id: string; name: string; price: number; totalQuantity: number; maxPerOrder: number }>;
+}
+
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('jwt');
   const res = await fetch(`${API}${path}`, {
@@ -59,9 +84,20 @@ export const api = {
     request<any>('/venues', { method: 'POST', body: JSON.stringify(data) }),
 
   // Events
-  getEvents: (page = 1, pageSize = 12) => request<any>(`/events?page=${page}&pageSize=${pageSize}`),
+  getEvents: (filters?: EventFilters) => {
+    const p = new URLSearchParams();
+    if (filters?.tab) p.set('tab', filters.tab);
+    if (filters?.type) p.set('type', filters.type);
+    if (filters?.date) p.set('date', filters.date);
+    if (filters?.hot) p.set('hot', 'true');
+    if (filters?.page) p.set('page', String(filters.page));
+    if (filters?.pageSize) p.set('pageSize', String(filters.pageSize));
+    const qs = p.toString();
+    return request<{ items: Event[]; total: number; page: number; pageSize: number }>(`/events${qs ? '?' + qs : ''}`);
+  },
+  getEventTypes: () => request<string[]>('/events/types'),
   getEventsAdmin: (page = 1, pageSize = 20) => request<any>(`/events/admin?page=${page}&pageSize=${pageSize}`),
-  updateEvent: (id: string, data: { name?: string; description?: string; startsAt?: string; endsAt?: string }) =>
+  updateEvent: (id: string, data: { name?: string; description?: string; startsAt?: string; endsAt?: string; eventType?: string }) =>
     request<any>(`/events/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   getEvent: (id: string) => request<any>(`/events/${id}`),
   uploadEventThumbnail: (eventId: string, file: File) => {

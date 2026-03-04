@@ -53,6 +53,7 @@ secrets:
   stripeWebhookSecret: ""
   ownerEmail: ""
   ownerPassword: ""
+  redisConnectionString: ""
 
 monitoring:
   enabled: false

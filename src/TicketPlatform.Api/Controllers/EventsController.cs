@@ -15,34 +15,86 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
     private const int DefaultPageSize = 12;
     private const int MaxPageSize = 100;
 
-    // GET /events?page=1&pageSize=12
+    // GET /events?page=1&pageSize=12&type=comedy&date=today&hot=true&tab=past
     [HttpGet]
     public async Task<ActionResult<EventsPagedResult>> GetAll(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = DefaultPageSize)
+        [FromQuery] int pageSize = DefaultPageSize,
+        [FromQuery] string? type = null,
+        [FromQuery] string? date = null,
+        [FromQuery] bool? hot = null,
+        [FromQuery] string? tab = null)
     {
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
         page = Math.Max(1, page);
+
+        var now = DateTimeOffset.UtcNow;
 
         var query = db.Events
             .Where(e => e.IsPublished)
             .Include(e => e.Venue)
             .Include(e => e.TicketTypes)
-            .OrderBy(e => e.StartsAt);
+            .AsQueryable();
+
+        // Tab filter: past vs upcoming (default)
+        if (tab == "past")
+            query = query.Where(e => e.StartsAt < now);
+        else
+            query = query.Where(e => e.StartsAt >= now);
+
+        // Type filter (case-insensitive)
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            var typeLower = type.ToLowerInvariant();
+            query = query.Where(e => e.EventType.ToLower() == typeLower);
+        }
+
+        // Date filter
+        if (date == "today")
+        {
+            var todayStart = new DateTimeOffset(now.Date, TimeSpan.Zero);
+            var todayEnd = todayStart.AddDays(1);
+            query = query.Where(e => e.StartsAt >= todayStart && e.StartsAt < todayEnd);
+        }
+        else if (date == "upcoming")
+        {
+            query = query.Where(e => e.StartsAt > now);
+        }
+
+        // Compute hot event IDs from DB
+        var twoHoursAgo = now.AddHours(-2);
+        var hotEventIds = await GetHotEventIdsAsync(twoHoursAgo);
+
+        // Hot filter
+        if (hot == true)
+            query = query.Where(e => hotEventIds.Contains(e.Id));
+
+        var orderedQuery = tab == "past"
+            ? query.OrderByDescending(e => e.StartsAt)
+            : query.OrderBy(e => e.StartsAt);
 
         var totalCount = await query.CountAsync();
-        var items = await query
+        var items = await orderedQuery
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
+        var dtoItems = items.Select(e => ToDto(e, hotEventIds, now)).ToList();
+
         return Ok(new EventsPagedResult(
-            Items: items,
+            Items: dtoItems,
             Page: page,
             PageSize: pageSize,
             TotalCount: totalCount,
             TotalPages: (int)Math.Ceiling((double)totalCount / pageSize)
         ));
+    }
+
+    [HttpGet("types")]
+    public IActionResult GetEventTypes()
+    {
+        var types = new[] { "comedy", "music", "sports", "arts", "food", "tech", "other" };
+        return Ok(types);
     }
 
     // GET /events/admin — all events (published + draft) for AppOwner
@@ -55,6 +107,10 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
         page = Math.Max(1, page);
 
+        var now = DateTimeOffset.UtcNow;
+        var twoHoursAgo = now.AddHours(-2);
+        var hotEventIds = await GetHotEventIdsAsync(twoHoursAgo);
+
         var query = db.Events
             .Include(e => e.Venue)
             .Include(e => e.TicketTypes)
@@ -66,8 +122,10 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
             .Take(pageSize)
             .ToListAsync();
 
+        var dtoItems = items.Select(e => ToDto(e, hotEventIds, now)).ToList();
+
         return Ok(new EventsPagedResult(
-            Items: items,
+            Items: dtoItems,
             Page: page,
             PageSize: pageSize,
             TotalCount: totalCount,
@@ -118,7 +176,8 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
             {
                 "WEEKLY" or "BIWEEKLY" or "MONTHLY" => req.RecurringRule.ToUpperInvariant(),
                 _ => null
-            }
+            },
+            EventType = req.EventType ?? "other"
         };
         ev.Slug = SlugHelper.Generate(ev.Name, ev.Id);
 
@@ -140,6 +199,7 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         if (!string.IsNullOrWhiteSpace(req.Description)) ev.Description = req.Description.Trim();
         if (req.StartsAt.HasValue) ev.StartsAt = req.StartsAt.Value;
         if (req.EndsAt.HasValue) ev.EndsAt = req.EndsAt.Value;
+        if (!string.IsNullOrWhiteSpace(req.EventType)) ev.EventType = req.EventType ?? "other";
 
         await db.SaveChangesAsync();
         return Ok(new { ev.Id, ev.Name, ev.Description, ev.StartsAt, ev.EndsAt, ev.IsPublished });
@@ -230,4 +290,38 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         await db.SaveChangesAsync();
         return NoContent();
     }
+
+    private async Task<HashSet<Guid>> GetHotEventIdsAsync(DateTimeOffset since)
+    {
+        var ids = await (
+            from t in db.Tickets
+            join o in db.Orders on t.OrderId equals o.Id
+            join tt in db.TicketTypes on t.TicketTypeId equals tt.Id
+            where o.CreatedAt > since
+            group t by tt.EventId into g
+            where g.Count() >= 3
+            select g.Key
+        ).ToListAsync();
+        return ids.ToHashSet();
+    }
+
+    private static EventResponseDto ToDto(Event e, HashSet<Guid> hotEventIds, DateTimeOffset now) => new(
+        Id: e.Id,
+        VenueId: e.VenueId,
+        Name: e.Name,
+        Slug: e.Slug,
+        Description: e.Description,
+        ThumbnailUrl: e.ThumbnailUrl,
+        StartsAt: e.StartsAt,
+        EndsAt: e.EndsAt,
+        SaleStartsAt: e.SaleStartsAt,
+        IsPublished: e.IsPublished,
+        CreatedAt: e.CreatedAt,
+        RecurringRule: e.RecurringRule,
+        EventType: e.EventType,
+        IsHot: hotEventIds.Contains(e.Id),
+        TicketsDroppingSoon: e.SaleStartsAt > now && e.SaleStartsAt < now.AddHours(24),
+        Venue: e.Venue,
+        TicketTypes: e.TicketTypes
+    );
 }

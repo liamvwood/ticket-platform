@@ -91,6 +91,7 @@ export class PageVenueNewEvent extends LitElement {
   @state() saleStartsAt = '';
   @state() recurringRule = '';
   @state() venueId = '';
+  @state() eventType = 'other';
 
   // Ticket type fields
   @state() ttName = 'General Admission';
@@ -142,6 +143,7 @@ export class PageVenueNewEvent extends LitElement {
         endsAt: new Date(this.endsAt).toISOString(),
         saleStartsAt: new Date(this.saleStartsAt).toISOString(),
         recurringRule: this.recurringRule || undefined,
+        eventType: this.eventType,
       });
       this.createdEventId = ev.id;
       this.step = 'tickets';
@@ -273,6 +275,18 @@ export class PageVenueNewEvent extends LitElement {
             <div class="field">
               <label>Description</label>
               <textarea .value=${this.description} @input=${(e: any) => this.description = e.target.value} placeholder="Describe the event…"></textarea>
+            </div>
+            <div class="field">
+              <label>Event Type</label>
+              <select .value=${this.eventType} @change=${(e: any) => this.eventType = e.target.value}>
+                <option value="other">Other</option>
+                <option value="comedy">Comedy</option>
+                <option value="music">Music</option>
+                <option value="sports">Sports</option>
+                <option value="arts">Arts</option>
+                <option value="food">Food</option>
+                <option value="tech">Tech</option>
+              </select>
             </div>
             <div class="row">
               <div class="field">

@@ -137,7 +137,7 @@ export class PageVenueDashboard extends LitElement {
     try {
       const result = this.isOwner
         ? await api.getEventsAdmin(page, 20)
-        : await api.getEvents(page, 20);
+        : await api.getEvents({ page, pageSize: 20 });
       if (result?.items) {
         this.events = result.items;
         this.page = result.page;

@@ -17,8 +17,9 @@ export class PageVenueManageEvent extends LitElement {
     h2 { margin: 0 0 1.2rem; font-size: 1.1rem; color: #F5F5F5; }
     .field { margin-bottom: 1rem; }
     .field label { display: block; font-size: .8rem; color: #9ca3af; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .4rem; }
-    .field input, .field textarea { width: 100%; box-sizing: border-box; background: #0B0F14; border: 1px solid #1e2836; border-radius: 8px; padding: .65rem .9rem; color: #F5F5F5; font-size: .95rem; font-family: inherit; }
+    .field input, .field textarea, .field select { width: 100%; box-sizing: border-box; background: #0B0F14; border: 1px solid #1e2836; border-radius: 8px; padding: .65rem .9rem; color: #F5F5F5; font-size: .95rem; font-family: inherit; }
     .field textarea { min-height: 90px; resize: vertical; }
+    .field select option { background: #0B0F14; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
     .btn { background: #00FF88; color: #0B0F14; border: none; border-radius: 8px; padding: .75rem 1.5rem; font-weight: 700; cursor: pointer; font-size: .9rem; }
@@ -51,6 +52,7 @@ export class PageVenueManageEvent extends LitElement {
   @state() editDescription = '';
   @state() editStartsAt = '';
   @state() editEndsAt = '';
+  @state() editEventType = '';
   // New ticket type
   @state() ttName = 'General Admission';
   @state() ttPrice = '';
@@ -77,6 +79,7 @@ export class PageVenueManageEvent extends LitElement {
       this.editDescription = this.ev.description ?? '';
       this.editStartsAt = this.ev.startsAt ? new Date(this.ev.startsAt).toISOString().slice(0, 16) : '';
       this.editEndsAt = this.ev.endsAt ? new Date(this.ev.endsAt).toISOString().slice(0, 16) : '';
+      this.editEventType = this.ev.eventType ?? 'other';
     } catch (err: any) { this.error = err.message; }
     finally { this.loading = false; }
   }
@@ -90,6 +93,7 @@ export class PageVenueManageEvent extends LitElement {
         description: this.editDescription,
         startsAt: this.editStartsAt ? new Date(this.editStartsAt).toISOString() : undefined,
         endsAt: this.editEndsAt ? new Date(this.editEndsAt).toISOString() : undefined,
+        eventType: this.editEventType,
       });
       this.success = 'Event details saved.';
     } catch (err: any) { this.error = err.message; }
@@ -187,6 +191,18 @@ export class PageVenueManageEvent extends LitElement {
           <div class="field">
             <label>Description</label>
             <textarea .value=${this.editDescription} @input=${(e: any) => this.editDescription = e.target.value}></textarea>
+          </div>
+          <div class="field">
+            <label>Event Type</label>
+            <select .value=${this.editEventType} @change=${(e: any) => this.editEventType = e.target.value}>
+              <option value="other">Other</option>
+              <option value="comedy">Comedy</option>
+              <option value="music">Music</option>
+              <option value="sports">Sports</option>
+              <option value="arts">Arts</option>
+              <option value="food">Food</option>
+              <option value="tech">Tech</option>
+            </select>
           </div>
           <div class="row">
             <div class="field">

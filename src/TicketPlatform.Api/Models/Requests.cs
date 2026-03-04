@@ -17,7 +17,8 @@ public record CreateEventRequest(
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
     DateTimeOffset SaleStartsAt,
-    string? RecurringRule = null);
+    string? RecurringRule = null,
+    string EventType = "other");
 
 public record CreateTicketTypeRequest(
     string Name,
@@ -37,12 +38,32 @@ public record UpdateEventRequest(
     string? Name,
     string? Description,
     DateTimeOffset? StartsAt,
-    DateTimeOffset? EndsAt);
+    DateTimeOffset? EndsAt,
+    string? EventType = null);
 
 public record QrValidationRequest(string Token);
 
+public record EventResponseDto(
+    Guid Id,
+    Guid VenueId,
+    string Name,
+    string Slug,
+    string Description,
+    string? ThumbnailUrl,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt,
+    DateTimeOffset SaleStartsAt,
+    bool IsPublished,
+    DateTimeOffset CreatedAt,
+    string? RecurringRule,
+    string EventType,
+    bool IsHot,
+    bool TicketsDroppingSoon,
+    TicketPlatform.Core.Entities.Venue? Venue,
+    ICollection<TicketPlatform.Core.Entities.TicketType>? TicketTypes);
+
 public record EventsPagedResult(
-    List<TicketPlatform.Core.Entities.Event> Items,
+    List<EventResponseDto> Items,
     int Page,
     int PageSize,
     int TotalCount,
