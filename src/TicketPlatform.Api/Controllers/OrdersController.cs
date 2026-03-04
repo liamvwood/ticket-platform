@@ -20,61 +20,89 @@ public class OrdersController(AppDbContext db, AppMetrics metrics) : ControllerB
     public async Task<ActionResult<Order>> Create(CreateOrderRequest req, [FromQuery(Name = "ref")] string? referralCode)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        // Clamp platform fee to reasonable range (0–20)
         var platformFee = Math.Clamp(req.PlatformFee, 0m, 20m);
 
-        var ticketType = await db.TicketTypes
-            .Include(tt => tt.Event)
-            .FirstOrDefaultAsync(tt => tt.Id == req.TicketTypeId);
+        // Normalize: support both multi-item (Items) and legacy single-item (TicketTypeId/Quantity)
+        var items = (req.Items is { Count: > 0 })
+            ? req.Items
+            : [new OrderLineItem(req.TicketTypeId, req.Quantity)];
 
-        if (ticketType is null) return NotFound("TicketType not found.");
-        if (ticketType.Event.SaleStartsAt > DateTimeOffset.UtcNow)
-            return BadRequest("Tickets are not on sale yet.");
-        if (req.Quantity < 1 || req.Quantity > ticketType.MaxPerOrder)
-            return BadRequest($"Quantity must be between 1 and {ticketType.MaxPerOrder}.");
+        // Remove zero-qty items
+        items = items.Where(i => i.Quantity > 0).ToList();
+        if (items.Count == 0) return BadRequest("No items in order.");
+
+        // Load all ticket types in one query
+        var ttIds = items.Select(i => i.TicketTypeId).Distinct().ToList();
+        var ticketTypes = await db.TicketTypes
+            .Include(tt => tt.Event)
+            .Where(tt => ttIds.Contains(tt.Id))
+            .ToListAsync();
+
+        // Validate each line
+        foreach (var item in items)
+        {
+            var tt = ticketTypes.FirstOrDefault(t => t.Id == item.TicketTypeId);
+            if (tt is null) return NotFound($"TicketType {item.TicketTypeId} not found.");
+            if (tt.Event.SaleStartsAt > DateTimeOffset.UtcNow)
+                return BadRequest("Tickets are not on sale yet.");
+            if (item.Quantity < 1 || item.Quantity > tt.MaxPerOrder)
+                return BadRequest($"Quantity for '{tt.Name}' must be between 1 and {tt.MaxPerOrder}.");
+        }
 
         await using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
-            // Pessimistic lock: grab available tickets with FOR UPDATE SKIP LOCKED
-            var availableTickets = await db.Tickets
-                .FromSqlRaw(
-                    "SELECT * FROM \"Tickets\" WHERE \"TicketTypeId\" = {0} AND \"Status\" = 0 LIMIT {1} FOR UPDATE SKIP LOCKED",
-                    req.TicketTypeId, req.Quantity)
-                .ToListAsync();
-
-            if (availableTickets.Count < req.Quantity)
+            var allReservedTickets = new List<TicketPlatform.Core.Entities.Ticket>();
+            foreach (var item in items)
             {
-                metrics.OrdersCreatedTotal.WithLabels("conflict").Inc();
-                return Conflict("Not enough tickets available.");
+                var availableTickets = await db.Tickets
+                    .FromSqlRaw(
+                        "SELECT * FROM \"Tickets\" WHERE \"TicketTypeId\" = {0} AND \"Status\" = 0 LIMIT {1} FOR UPDATE SKIP LOCKED",
+                        item.TicketTypeId, item.Quantity)
+                    .ToListAsync();
+
+                if (availableTickets.Count < item.Quantity)
+                {
+                    metrics.OrdersCreatedTotal.WithLabels("conflict").Inc();
+                    var ttName = ticketTypes.First(t => t.Id == item.TicketTypeId).Name;
+                    return Conflict($"Not enough tickets available for '{ttName}'.");
+                }
+                allReservedTickets.AddRange(availableTickets);
             }
+
+            var totalAmount = items.Sum(item =>
+                ticketTypes.First(t => t.Id == item.TicketTypeId).Price * item.Quantity);
 
             var order = new Order
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 Status = OrderStatus.AwaitingPayment,
-                TotalAmount = ticketType.Price * req.Quantity,
+                TotalAmount = totalAmount,
                 PlatformFee = platformFee,
                 ReferredBy = referralCode,
                 ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(15)
             };
             db.Orders.Add(order);
 
-            foreach (var ticket in availableTickets)
+            foreach (var ticket in allReservedTickets)
             {
                 ticket.Status = TicketStatus.Reserved;
                 ticket.OrderId = order.Id;
                 ticket.UpdatedAt = DateTimeOffset.UtcNow;
             }
 
-            ticketType.QuantitySold += req.Quantity;
+            foreach (var item in items)
+            {
+                var tt = ticketTypes.First(t => t.Id == item.TicketTypeId);
+                tt.QuantitySold += item.Quantity;
+            }
+
             await db.SaveChangesAsync();
             await transaction.CommitAsync();
 
             metrics.OrdersCreatedTotal.WithLabels("created").Inc();
-            metrics.TicketsReservedTotal.Inc(req.Quantity);
+            metrics.TicketsReservedTotal.Inc(allReservedTickets.Count);
 
             return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
         }

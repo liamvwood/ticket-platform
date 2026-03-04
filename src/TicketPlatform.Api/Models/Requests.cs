@@ -25,10 +25,13 @@ public record CreateTicketTypeRequest(
     int TotalQuantity,
     int MaxPerOrder);
 
+public record OrderLineItem(Guid TicketTypeId, int Quantity);
+
 public record CreateOrderRequest(
     Guid TicketTypeId,
     int Quantity,
-    decimal PlatformFee = 0m);
+    decimal PlatformFee = 0m,
+    List<OrderLineItem>? Items = null);
 
 public record QrValidationRequest(string Token);
 

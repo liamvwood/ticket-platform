@@ -83,6 +83,15 @@ export const api = {
     const qs = referralCode ? `?ref=${encodeURIComponent(referralCode)}` : '';
     return request<any>(`/orders${qs}`, { method: 'POST', body: JSON.stringify({ ticketTypeId, quantity, platformFee }) });
   },
+  createOrderMulti: (items: { ticketTypeId: string; quantity: number }[], platformFee = 0, referralCode?: string) => {
+    const qs = referralCode ? `?ref=${encodeURIComponent(referralCode)}` : '';
+    // Use first item as legacy fields for back-compat, plus the new items array
+    const first = items[0];
+    return request<any>(`/orders${qs}`, {
+      method: 'POST',
+      body: JSON.stringify({ ticketTypeId: first.ticketTypeId, quantity: first.quantity, platformFee, items }),
+    });
+  },
   getOrders: () => request<any[]>('/orders'),
   getOrder: (id: string) => request<any>(`/orders/${id}`),
 

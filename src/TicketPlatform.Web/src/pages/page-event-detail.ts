@@ -179,7 +179,6 @@ export class PageEventDetail extends LitElement {
   @state() error = '';
   @state() quantities: Record<string, number> = {};
   @state() ordering: Record<string, boolean> = {};
-  @state() selectedTtId: string | null = null;
   @state() toast = '';
   @state() toastClass = '';
 
@@ -210,12 +209,10 @@ export class PageEventDetail extends LitElement {
     try {
       this.event = await api.getEvent(this.eventId);
       const q: Record<string, number> = {};
-      this.event?.ticketTypes?.forEach((tt: any) => { q[tt.id] = 1; });
+      // Default all ticket types to 0
+      this.event?.ticketTypes?.forEach((tt: any) => { q[tt.id] = 0; });
       this.quantities = q;
-      // Auto-select first available ticket type
-      const firstAvail = this.event?.ticketTypes?.find((tt: any) => this._available(tt) > 0);
-      if (firstAvail) this.selectedTtId = firstAvail.id;
-      // Update page title + meta for bots that execute JS
+      // No auto-selection needed — user picks qty to add
       document.title = `${this.event.name} — Slingshot`;
     } catch (e: any) {
       this.error = e.message;
@@ -225,13 +222,13 @@ export class PageEventDetail extends LitElement {
   }
 
   private _setQty(ttId: string, delta: number, max: number) {
-    const cur = this.quantities[ttId] ?? 1;
-    this.quantities = { ...this.quantities, [ttId]: Math.max(1, Math.min(max, cur + delta)) };
+    const cur = this.quantities[ttId] ?? 0;
+    this.quantities = { ...this.quantities, [ttId]: Math.max(0, Math.min(max, cur + delta)) };
   }
 
-  private async _buy(tt: any) {
+  private async _buy() {
     if (!auth.isLoggedIn) {
-      this.pendingTt = tt;
+      this.pendingTt = '__multi__';
       this.otpStep = 'phone';
       this.modalPhone = '';
       this.modalCode = '';
@@ -240,19 +237,23 @@ export class PageEventDetail extends LitElement {
       this.showModal = true;
       return;
     }
-    await this._placeOrder(tt);
+    await this._placeOrder();
   }
 
-  private async _placeOrder(tt: any) {
-    this.ordering = { ...this.ordering, [tt.id]: true };
+  private async _placeOrder() {
+    const items = Object.entries(this.quantities)
+      .filter(([, qty]) => qty > 0)
+      .map(([ticketTypeId, quantity]) => ({ ticketTypeId, quantity }));
+    if (items.length === 0) return;
+
+    this.ordering = { ...this.ordering, __multi__: true };
     try {
-      const qty = this.quantities[tt.id] ?? 1;
-      const order = await api.createOrder(tt.id, qty, this.platformFee, this.referralCode ?? undefined);
+      const order = await api.createOrderMulti(items, this.platformFee, this.referralCode ?? undefined);
       navigate(`/checkout/${order.id}`);
     } catch (e: any) {
       this._showToast(e.message);
     } finally {
-      this.ordering = { ...this.ordering, [tt.id]: false };
+      this.ordering = { ...this.ordering, __multi__: false };
     }
   }
 
@@ -280,7 +281,7 @@ export class PageEventDetail extends LitElement {
       auth.save(res.token, res.email, res.role);
       this.showModal = false;
       // Proceed with the order
-      if (this.pendingTt) await this._placeOrder(this.pendingTt);
+      if (this.pendingTt) await this._placeOrder();
     } catch (e: any) {
       this.modalError = e.message;
     } finally {
@@ -357,21 +358,20 @@ export class PageEventDetail extends LitElement {
       <div class="ticket-types">
         ${ev.ticketTypes?.map((tt: any) => {
           const avail = this._available(tt);
-          const qty = this.quantities[tt.id] ?? 1;
-          const isSelected = this.selectedTtId === tt.id;
+          const qty = this.quantities[tt.id] ?? 0;
+          const hasQty = qty > 0;
           return html`
-            <div class="tt-row ${isSelected ? 'selected' : ''}" @click=${() => { if (avail > 0) { this.selectedTtId = tt.id; this.requestUpdate(); } }}>
+            <div class="tt-row ${hasQty ? 'selected' : ''}">
               <div class="tt-info">
                 <h3>${tt.name}</h3>
-                <p>Max ${tt.maxPerOrder} per order · ${avail > 0 ? `${avail} left` : 'Sold out'}</p>
+                <p>$${tt.price.toFixed(2)} each · Max ${tt.maxPerOrder} per order · ${avail > 0 ? `${avail} left` : 'Sold out'}</p>
               </div>
               <div class="tt-right">
-                <div class="price">$${tt.price.toFixed(2)}</div>
                 ${avail > 0 ? html`
                   <div class="qty-row">
-                    <button class="qty-btn" @click=${(e: Event) => { e.stopPropagation(); this._setQty(tt.id, -1, tt.maxPerOrder); }}>−</button>
+                    <button class="qty-btn" @click=${() => this._setQty(tt.id, -1, tt.maxPerOrder)}>−</button>
                     <span class="qty">${qty}</span>
-                    <button class="qty-btn" @click=${(e: Event) => { e.stopPropagation(); this._setQty(tt.id, 1, tt.maxPerOrder); }}>+</button>
+                    <button class="qty-btn" @click=${() => this._setQty(tt.id, 1, tt.maxPerOrder)}>+</button>
                   </div>
                 ` : html`<div class="sold-out">Sold Out</div>`}
               </div>
@@ -399,22 +399,41 @@ export class PageEventDetail extends LitElement {
         `}
       </div>
 
-      <!-- Single buy CTA at the bottom -->
+      <!-- Order summary + buy CTA -->
       ${(() => {
-        const selTt = ev.ticketTypes?.find((tt: any) => tt.id === this.selectedTtId);
-        const qty = selTt ? (this.quantities[selTt.id] ?? 1) : 0;
-        const total = selTt ? (selTt.price * qty + this.platformFee).toFixed(2) : '0.00';
+        const lineItems = ev.ticketTypes?.filter((tt: any) => (this.quantities[tt.id] ?? 0) > 0) ?? [];
+        const ticketTotal = lineItems.reduce((s: number, tt: any) => s + tt.price * (this.quantities[tt.id] ?? 0), 0);
+        const grandTotal = (ticketTotal + this.platformFee).toFixed(2);
+        const hasItems = lineItems.length > 0;
+        const busy = this.ordering['__multi__'] ?? false;
         return html`
           <div class="buy-cta">
-            ${selTt ? html`
-              <p class="buy-cta-total">
-                ${qty}× ${selTt.name} — <strong>$${total}</strong>
-                ${this.platformFee > 0 ? html` <span style="color:#6b7a8d;font-size:0.85em">(incl. $${this.platformFee} contribution)</span>` : ''}
-              </p>
-            ` : html`<p class="buy-cta-total">Select a ticket type above</p>`}
-            <button class="btn-buy" ?disabled=${(!selTt || this.ordering[this.selectedTtId!]) ?? false}
-              @click=${() => selTt && this._buy(selTt)}>
-              ${selTt && this.ordering[selTt.id] ? 'Processing…' : 'Buy Tickets →'}
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${hasItems ? '0.75rem' : '0'}">
+              <span style="font-weight:700;font-size:1rem">Order Summary</span>
+              ${hasItems ? html`<span style="font-weight:800;font-size:1.15rem;color:#F5F5F5">$${grandTotal}</span>` : ''}
+            </div>
+            ${hasItems ? html`
+              <div style="margin-bottom:1rem">
+                ${lineItems.map((tt: any) => {
+                  const qty = this.quantities[tt.id] ?? 0;
+                  const sub = (tt.price * qty).toFixed(2);
+                  return html`
+                    <div style="display:flex;justify-content:space-between;font-size:0.88rem;color:#c8cdd6;padding:0.2rem 0">
+                      <span>${qty}× ${tt.name}</span>
+                      <span>$${sub}</span>
+                    </div>
+                  `;
+                })}
+                ${this.platformFee > 0 ? html`
+                  <div style="display:flex;justify-content:space-between;font-size:0.88rem;color:#6b7a8d;padding:0.2rem 0;border-top:1px solid #1e2836;margin-top:0.4rem;padding-top:0.4rem">
+                    <span>Platform contribution</span>
+                    <span>$${this.platformFee.toFixed(2)}</span>
+                  </div>
+                ` : ''}
+              </div>
+            ` : html`<p class="buy-cta-total" style="margin-bottom:0.75rem">Add tickets above to get started</p>`}
+            <button class="btn-buy" ?disabled=${!hasItems || busy} @click=${() => this._buy()}>
+              ${busy ? 'Processing...' : hasItems ? 'Buy Tickets →' : 'Select Tickets'}
             </button>
             <p class="buy-cta-hint">Secure checkout · No hidden fees</p>
           </div>
