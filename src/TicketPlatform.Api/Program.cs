@@ -208,8 +208,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Seed test venue in Development/Test (idempotent — used by E2E tests)
-if (app.Environment.IsDevelopment())
+// Seed test venue (idempotent — used by E2E tests and all environments)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<TicketPlatform.Infrastructure.Data.AppDbContext>();
@@ -229,8 +228,7 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-// Seed demo events with varied EventTypes in Development (idempotent)
-if (app.Environment.IsDevelopment())
+// Seed demo events with varied EventTypes (idempotent — runs in all environments)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<TicketPlatform.Infrastructure.Data.AppDbContext>();
