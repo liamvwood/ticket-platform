@@ -1169,3 +1169,303 @@ test.describe('Event type filtering', () => {
     await expect(typeSelect).toHaveValue('');
   });
 });
+
+// ─── Rich link previews (OG / iMessage / Twitter Card) ─────────────────────
+//
+// Validates that sharing an event URL produces correct Open Graph and Twitter
+// Card meta tags, that the generated fallback image is a 1200×630 PNG, and
+// that a real thumbnail is preferred over the generated one when set.
+
+test.describe('Rich link previews', () => {
+  let venueToken = '';
+  let venueId = '';
+  let noThumbEventId = '';
+  let noThumbEventSlug = '';
+  let noThumbEventName = '';
+  let thumbEventId = '';
+
+  const ALL_EVENT_TYPES = ['comedy', 'music', 'sports', 'arts', 'food', 'tech', 'other'];
+
+  // Minimal 1×1 transparent PNG used as a stand-in thumbnail
+  const TINY_PNG_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+  test('setup: create events for preview tests', async () => {
+    venueToken = await getToken(VENUE_EMAIL, VENUE_PASS);
+    const venueRes = (await apiGet('/venues', venueToken)).json();
+    venueId = (Array.isArray(venueRes) ? venueRes[0]?.id : venueRes?.id) ?? '';
+    if (!venueId) return;
+
+    const future = (offsetMs: number) => new Date(Date.now() + offsetMs).toISOString();
+
+    // Event without a thumbnail — validates the generated fallback image
+    const r1 = await apiPost('/events', {
+      name: `OG No Thumb ${RUN}`,
+      description: 'Rich preview test event without a thumbnail. Multi-sentence description here.',
+      startsAt: future(86400000 * 7),
+      endsAt: future(86400000 * 7 + 7200000),
+      saleStartsAt: future(-3600000),
+      venueId,
+      eventType: 'music',
+    }, venueToken);
+    expect(r1.status()).toBe(201);
+    noThumbEventId = r1.json().id;
+    noThumbEventSlug = r1.json().slug;
+    noThumbEventName = r1.json().name;
+    await apiPut(`/events/${noThumbEventId}/publish`, venueToken);
+
+    // Event with a thumbnail — validates thumbnail is preferred over generated image
+    const r2 = await apiPost('/events', {
+      name: `OG With Thumb ${RUN}`,
+      description: 'Rich preview test event with a thumbnail uploaded.',
+      startsAt: future(86400000 * 14),
+      endsAt: future(86400000 * 14 + 7200000),
+      saleStartsAt: future(-3600000),
+      venueId,
+      eventType: 'comedy',
+    }, venueToken);
+    expect(r2.status()).toBe(201);
+    thumbEventId = r2.json().id;
+
+    const pngBytes = Buffer.from(TINY_PNG_B64, 'base64');
+    const form = new FormData();
+    form.append('file', new Blob([pngBytes], { type: 'image/png' }), 'thumb.png');
+    const uploadRes = await fetch(`${API}/events/${thumbEventId}/thumbnail`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${venueToken}` },
+      body: form,
+    });
+    expect(uploadRes.status).toBe(200);
+
+    await apiPut(`/events/${thumbEventId}/publish`, venueToken);
+  });
+
+  test.afterAll(async () => {
+    await deleteEvent(noThumbEventId, venueToken);
+    await deleteEvent(thumbEventId, venueToken);
+  });
+
+  // ── OG HTML structure ───────────────────────────────────────────────────
+
+  test('OG endpoint returns 200 HTML', async () => {
+    if (!noThumbEventId) return;
+    const r = await fetch(`${API}/og/events/${noThumbEventId}`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toContain('text/html');
+  });
+
+  test('OG HTML includes all required Open Graph meta tags', async () => {
+    if (!noThumbEventId) return;
+    const html = await fetch(`${API}/og/events/${noThumbEventId}`).then(r => r.text());
+    expect(html).toContain('og:title');
+    expect(html).toContain('og:description');
+    expect(html).toContain('og:image');
+    expect(html).toContain('og:image:width');
+    expect(html).toContain('og:image:height');
+    expect(html).toContain('og:type');
+    expect(html).toContain('og:site_name');
+    expect(html).toContain('og:url');
+  });
+
+  test('OG HTML includes all required Twitter Card meta tags', async () => {
+    if (!noThumbEventId) return;
+    const html = await fetch(`${API}/og/events/${noThumbEventId}`).then(r => r.text());
+    expect(html).toContain('twitter:card');
+    expect(html).toContain('twitter:title');
+    expect(html).toContain('twitter:description');
+    expect(html).toContain('twitter:image');
+    // Large-image card is required for rich previews in iMessage / Slack
+    expect(html).toContain('summary_large_image');
+  });
+
+  test('og:title contains the event name', async () => {
+    if (!noThumbEventId || !noThumbEventName) return;
+    const html = await fetch(`${API}/og/events/${noThumbEventId}`).then(r => r.text());
+    expect(html).toContain(noThumbEventName);
+  });
+
+  test('og:description contains date and venue name', async () => {
+    if (!noThumbEventId) return;
+    const ev = (await apiGet(`/events/${noThumbEventId}`)).json();
+    const html = await fetch(`${API}/og/events/${noThumbEventId}`).then(r => r.text());
+    expect(html).toContain('og:description');
+    expect(html).toContain(ev.venue?.name ?? '');
+  });
+
+  test('og:url contains the event slug', async () => {
+    if (!noThumbEventId || !noThumbEventSlug) return;
+    const html = await fetch(`${API}/og/events/${noThumbEventId}`).then(r => r.text());
+    expect(html).toContain(noThumbEventSlug);
+  });
+
+  test('og:image:width is 1200 and og:image:height is 630', async () => {
+    if (!noThumbEventId) return;
+    const html = await fetch(`${API}/og/events/${noThumbEventId}`).then(r => r.text());
+    expect(html).toContain('content="1200"');
+    expect(html).toContain('content="630"');
+  });
+
+  // ── Slug-based access ──────────────────────────────────────────────────
+
+  test('OG endpoint is accessible by event slug (not just ID)', async () => {
+    if (!noThumbEventSlug) return;
+    const r = await fetch(`${API}/og/events/${noThumbEventSlug}`);
+    expect(r.status).toBe(200);
+    const html = await r.text();
+    expect(html).toContain('og:title');
+    expect(html).toContain(noThumbEventName);
+  });
+
+  // ── Generated fallback image ────────────────────────────────────────────
+
+  test('generated image endpoint returns 200 with image/png content-type', async () => {
+    if (!noThumbEventId) return;
+    const r = await fetch(`${API}/og/events/${noThumbEventId}/image`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toContain('image/png');
+  });
+
+  test('generated image is exactly 1200×630 pixels (PNG IHDR check)', async () => {
+    if (!noThumbEventId) return;
+    const buf = await fetch(`${API}/og/events/${noThumbEventId}/image`).then(r => r.arrayBuffer());
+    // PNG IHDR: 8-byte magic + 4-byte length + 4-byte 'IHDR' + 4-byte width + 4-byte height
+    const view = new DataView(buf);
+    expect(view.getUint32(16, false)).toBe(1200);  // big-endian
+    expect(view.getUint32(20, false)).toBe(630);
+  });
+
+  test('generated image has a public Cache-Control header', async () => {
+    if (!noThumbEventId) return;
+    const r = await fetch(`${API}/og/events/${noThumbEventId}/image`);
+    expect(r.headers.get('cache-control') ?? '').toMatch(/public/i);
+  });
+
+  // ── Thumbnail vs generated image routing ───────────────────────────────
+
+  test('og:image points to generated endpoint when event has no thumbnail', async () => {
+    if (!noThumbEventId) return;
+    const html = await fetch(`${API}/og/events/${noThumbEventId}`).then(r => r.text());
+    expect(html).toMatch(/og\/events\/.+\/image/);
+    expect(html).toContain('image/png');
+  });
+
+  test('og:image points to thumbnail URL when event has a thumbnail', async () => {
+    if (!thumbEventId) return;
+    const ev = (await apiGet(`/events/${thumbEventId}`)).json();
+    if (!ev.thumbnailUrl) return; // upload may be skipped in environments without S3
+
+    const html = await fetch(`${API}/og/events/${thumbEventId}`).then(r => r.text());
+    expect(html).toContain(ev.thumbnailUrl);
+    expect(html).not.toMatch(new RegExp(`og/events/${thumbEventId}/image`));
+  });
+
+  // ── All event types produce valid images ───────────────────────────────
+
+  test.describe('generated image for each event type', () => {
+    for (const eventType of ALL_EVENT_TYPES) {
+      test(`event type "${eventType}" produces a valid 1200×630 PNG`, async () => {
+        if (!venueId || !venueToken) return;
+        const future = (offsetMs: number) => new Date(Date.now() + offsetMs).toISOString();
+        const createRes = await apiPost('/events', {
+          name: `OG Type Test ${eventType} ${RUN}`,
+          description: `Type validation for ${eventType}`,
+          startsAt: future(86400000 * 30),
+          endsAt: future(86400000 * 30 + 7200000),
+          saleStartsAt: future(-3600000),
+          venueId,
+          eventType,
+        }, venueToken);
+        if (createRes.status() !== 201) return;
+        const evId = createRes.json().id;
+        try {
+          const r = await fetch(`${API}/og/events/${evId}/image`);
+          expect(r.status).toBe(200);
+          expect(r.headers.get('content-type')).toContain('image/png');
+          const view = new DataView(await r.arrayBuffer());
+          expect(view.getUint32(16, false)).toBe(1200);
+          expect(view.getUint32(20, false)).toBe(630);
+        } finally {
+          await deleteEvent(evId, venueToken);
+        }
+      });
+    }
+  });
+});
+
+// ─── Nginx bot routing ─────────────────────────────────────────────────────
+//
+// Validates that the nginx frontend correctly routes social media crawlers from
+// /events/{slug} to the API OG endpoint, returning rich preview HTML instead of
+// the SPA shell.
+//
+// Requires E2E_NGINX_URL to be set (e.g. http://localhost:8090 pointing at the
+// nginx frontend container). Automatically skipped in local Vite dev mode.
+
+const NGINX_URL = process.env.E2E_NGINX_URL ?? '';
+
+test.describe('Nginx bot routing', () => {
+  let venueToken = '';
+  let botEventSlug = '';
+  let botEventName = '';
+  let botEventId = '';
+
+  test.beforeAll(async () => {
+    test.skip(!NGINX_URL, 'Set E2E_NGINX_URL to test nginx bot routing (e.g. http://localhost:8090)');
+  });
+
+  test('setup: create and publish event for bot routing test', async () => {
+    if (!NGINX_URL) return;
+    venueToken = await getToken(VENUE_EMAIL, VENUE_PASS);
+    const venueRes = (await apiGet('/venues', venueToken)).json();
+    const venueId = (Array.isArray(venueRes) ? venueRes[0]?.id : venueRes?.id) ?? '';
+    if (!venueId) return;
+
+    const future = (offsetMs: number) => new Date(Date.now() + offsetMs).toISOString();
+    const res = await apiPost('/events', {
+      name: `Bot Route Test ${RUN}`,
+      description: 'Event for nginx bot routing validation.',
+      startsAt: future(86400000 * 7),
+      endsAt: future(86400000 * 7 + 7200000),
+      saleStartsAt: future(-3600000),
+      venueId,
+      eventType: 'music',
+    }, venueToken);
+    expect(res.status()).toBe(201);
+    botEventId = res.json().id;
+    botEventSlug = res.json().slug;
+    botEventName = res.json().name;
+    await apiPut(`/events/${botEventId}/publish`, venueToken);
+  });
+
+  test.afterAll(async () => { await deleteEvent(botEventId, venueToken); });
+
+  test('social bot UA on /events/{slug} receives OG HTML (not SPA shell)', async () => {
+    if (!NGINX_URL || !botEventSlug) return;
+    const r = await fetch(`${NGINX_URL}/events/${botEventSlug}`, {
+      headers: { 'User-Agent': 'Slackbot 1.0 (+https://api.slack.com/robots)' },
+    });
+    expect(r.status).toBe(200);
+    const html = await r.text();
+    expect(html).toContain('og:title');
+    expect(html).toContain(botEventName);
+    // OG page has no <tp-app> — confirms we got the API response, not the SPA
+    expect(html).not.toContain('<tp-app>');
+  });
+
+  test('regular browser UA on /events/{slug} receives the SPA shell', async () => {
+    if (!NGINX_URL || !botEventSlug) return;
+    const r = await fetch(`${NGINX_URL}/events/${botEventSlug}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36' },
+    });
+    expect(r.status).toBe(200);
+    const html = await r.text();
+    // SPA shell contains the custom element, not og:title per-event
+    expect(html).toContain('<tp-app>');
+  });
+
+  test('/og/* path is directly accessible through nginx (og:image URLs resolve)', async () => {
+    if (!NGINX_URL || !botEventId) return;
+    const r = await fetch(`${NGINX_URL}/og/events/${botEventId}/image`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toContain('image/png');
+  });
+});
