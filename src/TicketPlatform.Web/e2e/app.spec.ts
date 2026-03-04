@@ -479,16 +479,13 @@ test.describe('Event slugs', () => {
     expect(html).toContain(ev.name);
   });
 
-  test('OG image endpoint returns SVG', async () => {
+  test('OG image endpoint returns PNG', async () => {
     const events = await getAllEvents();
     if (events.length === 0) return;
     const ev = events[0];
     const r = await fetch(`${API}/og/events/${ev.id}/image`);
     expect(r.status).toBe(200);
-    expect(r.headers.get('content-type')).toContain('image/svg+xml');
-    const svg = await r.text();
-    expect(svg).toContain('<svg');
-    expect(svg).toContain(ev.name.substring(0, 10));
+    expect(r.headers.get('content-type')).toContain('image/png');
   });
 });
 
