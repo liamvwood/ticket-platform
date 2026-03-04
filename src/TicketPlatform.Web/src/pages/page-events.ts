@@ -87,6 +87,7 @@ export class PageEvents extends LitElement {
       justify-content: center;
       overflow: hidden;
       position: relative;
+      background: #1a1a2e;
     }
     .event-thumb img {
       width: 100%;
@@ -145,13 +146,26 @@ export class PageEvents extends LitElement {
 
     /* States */
     .empty { text-align: center; padding: 5rem 2rem; color: #6b7a8d; }
-    .loading { text-align: center; padding: 5rem; color: #6b7a8d; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-    .spinner {
-      width: 36px; height: 36px; border: 3px solid #1e2836;
-      border-top-color: #00FF88; border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+
+    /* Skeleton */
+    .skeleton-card {
+      background: #111820; border: 1px solid #1e2836; border-radius: 14px;
+      overflow: hidden; width: 320px; flex-shrink: 0;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .skeleton-thumb {
+      height: 160px;
+      background: linear-gradient(90deg, #1a1a2e 25%, #232336 50%, #1a1a2e 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    .skeleton-body { padding: 1.25rem; }
+    .skeleton-line {
+      height: 0.9rem; border-radius: 6px; margin-bottom: 0.6rem;
+      background: linear-gradient(90deg, #1a1a2e 25%, #232336 50%, #1a1a2e 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
     .api-banner {
       background: #1e1e2e; border: 1px solid #1e2836; border-radius: 8px;
@@ -356,7 +370,18 @@ export class PageEvents extends LitElement {
       </div>
 
       ${this._loading ? html`
-        <div class="loading"><div class="spinner"></div>Loading events…</div>
+        <div class="grid">
+          ${[1,2,3,4,5,6].map(() => html`
+            <div class="skeleton-card">
+              <div class="skeleton-thumb"></div>
+              <div class="skeleton-body">
+                <div class="skeleton-line" style="width:75%"></div>
+                <div class="skeleton-line" style="width:50%"></div>
+                <div class="skeleton-line" style="width:40%"></div>
+              </div>
+            </div>
+          `)}
+        </div>
       ` : this._events.length === 0 ? html`
         <div class="empty">
           <div style="font-size:2.5rem;margin-bottom:1rem">🎟</div>

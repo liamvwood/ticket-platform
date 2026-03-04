@@ -166,7 +166,46 @@ export class PageVenueDashboard extends LitElement {
   }
 
   render() {
-    if (this.loading) return html`<div class="loading">Loading...</div>`;
+    if (this.loading) return html`
+      <div style="max-width:1100px;margin:0 auto;padding:2rem">
+        <style>@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
+        <div style="height:2.2rem;width:320px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:10px;animation:shimmer 1.5s infinite;margin-bottom:2rem"></div>
+        <div style="height:2.2rem;width:240px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:8px;animation:shimmer 1.5s infinite;margin-bottom:0.6rem"></div>
+        <div style="height:1rem;width:300px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;animation:shimmer 1.5s infinite;margin-bottom:2.5rem"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:3rem">
+          ${[1,2,3,4].map(() => html`
+            <div style="background:#111820;border:1px solid #1e2836;border-radius:12px;padding:1.5rem">
+              <div style="height:0.75rem;width:80px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:4px;animation:shimmer 1.5s infinite;margin-bottom:0.6rem"></div>
+              <div style="height:2rem;width:80px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;animation:shimmer 1.5s infinite"></div>
+            </div>
+          `)}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <div style="height:1.5rem;width:80px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;animation:shimmer 1.5s infinite"></div>
+          <div style="display:flex;gap:0.75rem">
+            <div style="height:2rem;width:100px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:8px;animation:shimmer 1.5s infinite"></div>
+            <div style="height:2rem;width:110px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:8px;animation:shimmer 1.5s infinite"></div>
+          </div>
+        </div>
+        ${[1,2,3,4].map(() => html`
+          <div style="display:flex;gap:1.25rem;align-items:center;padding:1rem;border-bottom:1px solid #1e1e2e">
+            <div style="flex:2">
+              <div style="height:1rem;width:55%;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;animation:shimmer 1.5s infinite;margin-bottom:0.4rem"></div>
+            </div>
+            <div style="flex:1"><div style="height:0.85rem;width:70%;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;animation:shimmer 1.5s infinite"></div></div>
+            <div style="flex:1"><div style="height:1.4rem;width:60px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:999px;animation:shimmer 1.5s infinite"></div></div>
+            <div style="flex:1">
+              <div style="height:0.85rem;width:80%;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;animation:shimmer 1.5s infinite;margin-bottom:6px"></div>
+              <div style="height:6px;width:80%;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:999px;animation:shimmer 1.5s infinite"></div>
+            </div>
+            <div style="flex:1"><div style="height:0.85rem;width:60%;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:6px;animation:shimmer 1.5s infinite"></div></div>
+            <div style="display:flex;gap:0.5rem">
+              <div style="width:36px;height:30px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:8px;animation:shimmer 1.5s infinite"></div>
+              <div style="width:70px;height:30px;background:linear-gradient(90deg,#1a1a2e 25%,#232336 50%,#1a1a2e 75%);background-size:200% 100%;border-radius:8px;animation:shimmer 1.5s infinite"></div>
+            </div>
+          </div>
+        `)}
+      </div>`;
     const sold = this._totalSold();
     const tickets = this._totalTickets();
     const revenue = this._totalRevenue();

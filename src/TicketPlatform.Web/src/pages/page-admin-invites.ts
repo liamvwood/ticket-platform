@@ -112,11 +112,13 @@ export class PageAdminInvites extends LitElement {
   @state() newInviteEmail = '';
   @state() invites: any[] = [];
   @state() openKebab: string | null = null;
+  @state() adminUsers: any[] = [];
 
   connectedCallback() {
     super.connectedCallback();
     if (auth.role !== 'AppOwner') { navigate('/'); return; }
     this._loadInvites();
+    this._loadAdminUsers();
     // Close kebab on outside click
     document.addEventListener('click', this._closeKebab);
   }
@@ -132,6 +134,22 @@ export class PageAdminInvites extends LitElement {
     try {
       this.invites = await apiReq<any[]>('GET', '/admin/invites');
     } catch {}
+  }
+
+  private async _loadAdminUsers() {
+    try {
+      this.adminUsers = await apiReq<any[]>('GET', '/admin/users');
+    } catch {}
+  }
+
+  private async _revokeAdmin(userId: string, email: string) {
+    if (!confirm(`Remove admin role from ${email}?`)) return;
+    try {
+      await apiReq('DELETE', `/admin/users/${userId}/admin-role`);
+      await this._loadAdminUsers();
+    } catch (err: any) {
+      this.error = err.message;
+    }
   }
 
   private async _createInvite(e: Event) {
@@ -241,6 +259,36 @@ export class PageAdminInvites extends LitElement {
                           </div>
                         ` : ''}
                       </div>
+                    ` : ''}
+                  </td>
+                </tr>
+              `)}
+            </tbody>
+          </table>
+        `}
+      </div>
+
+      <div class="card">
+        <h2>Venue Admins</h2>
+        ${this.adminUsers.length === 0 ? html`
+          <p class="empty">No venue admins yet.</p>
+        ` : html`
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${this.adminUsers.map(u => html`
+                <tr>
+                  <td>${u.email}</td>
+                  <td><span class="badge ${u.role === 'AppOwner' ? 'badge-used' : 'badge-pending'}">${u.role}</span></td>
+                  <td>
+                    ${u.role === 'VenueAdmin' ? html`
+                      <button class="btn-sm btn-danger" @click=${() => this._revokeAdmin(u.id, u.email)}>Revoke</button>
                     ` : ''}
                   </td>
                 </tr>
