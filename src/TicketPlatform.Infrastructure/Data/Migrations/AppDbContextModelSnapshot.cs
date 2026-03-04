@@ -61,16 +61,16 @@ namespace TicketPlatform.Infrastructure.Data.Migrations
                     b.Property<DateTimeOffset>("EndsAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasDefaultValue("other")
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsPublished")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasDefaultValue("other")
                         .HasColumnType("text");
 
                     b.Property<string>("RecurringRule")
