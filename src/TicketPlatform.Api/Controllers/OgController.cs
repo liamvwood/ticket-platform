@@ -1,5 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using TicketPlatform.Infrastructure.Data;
 
 namespace TicketPlatform.Api.Controllers;
@@ -34,58 +38,46 @@ public class OgController(AppDbContext db) : ControllerBase
         var imageUrl = isGenerated
             ? $"{Request.Scheme}://{Request.Host}/og/events/{ev.Id}/image"
             : ev.ThumbnailUrl;
-        var imageType = isGenerated ? "image/svg+xml" : null;
+        var imageType = isGenerated ? "image/png" : null;
         var eventUrl = $"https://slingshot.dev/events/{ev.Slug}";
 
         return Content(MinimalHtml(title, desc, imageUrl, eventUrl, imageType), "text/html");
     }
 
-    // GET /og/events/{id}/image — returns a deterministic SVG OG image (1200×630)
+    // GET /og/events/{id}/image — returns PNG OG image (1200×630), iMessage compatible
     [HttpGet("events/{id}/image")]
-    [ResponseCache(Duration = 3600)]
-    public async Task<ContentResult> EventImage(string id)
+    [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
+    public async Task<IActionResult> EventImage(string id)
     {
-        Core.Entities.Event? ev = null;
-
-        if (Guid.TryParse(id, out var guid))
-            ev = await db.Events.Include(e => e.Venue).FirstOrDefaultAsync(e => e.Id == guid);
-        else
-            ev = await db.Events.Include(e => e.Venue).FirstOrDefaultAsync(e => e.Slug == id);
-
-        var name = ev?.Name ?? "Slingshot";
-        var venue = ev?.Venue?.Name ?? "Austin, TX";
-        var date = ev is not null ? ev.StartsAt.ToString("ddd MMM d, yyyy") : string.Empty;
-
-        // Derive a deterministic gradient from the event name
-        var hash = name.Aggregate(0, (h, c) => h * 31 + c);
-        var hue1 = Math.Abs(hash % 360);
-        var hue2 = (hue1 + 40) % 360;
-
-        var svg = $"""
-            <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-              <defs>
-                <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="hsl({hue1},60%,20%)"/>
-                  <stop offset="100%" stop-color="hsl({hue2},60%,10%)"/>
-                </linearGradient>
-              </defs>
-              <rect width="1200" height="630" fill="url(#bg)"/>
-              <rect x="0" y="0" width="1200" height="630" fill="rgba(0,0,0,0.35)"/>
-              <!-- Brand -->
-              <text x="60" y="80" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700" fill="rgba(255,255,255,0.6)">🎟 SLINGSHOT</text>
-              <!-- Event name -->
-              <text x="60" y="320" font-family="Inter,Arial,sans-serif" font-size="72" font-weight="900" fill="#ffffff" style="letter-spacing:-2px">{Escape(name.Truncate(36))}</text>
-              <!-- Date + Venue -->
-              <text x="60" y="410" font-family="Inter,Arial,sans-serif" font-size="34" fill="rgba(255,255,255,0.8)">{Escape(date)}</text>
-              <text x="60" y="460" font-family="Inter,Arial,sans-serif" font-size="30" fill="rgba(255,255,255,0.6)">{Escape(venue.Truncate(50))}</text>
-              <!-- CTA pill -->
-              <rect x="60" y="520" width="220" height="56" rx="28" fill="hsl({hue1},70%,55%)"/>
-              <text x="170" y="555" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#fff">Get Tickets</text>
-            </svg>
-            """;
-
         Response.Headers["Cache-Control"] = "public, max-age=86400";
-        return Content(svg, "image/svg+xml");
+
+        Core.Entities.Event? ev = null;
+        if (Guid.TryParse(id, out var guid))
+            ev = await db.Events.FirstOrDefaultAsync(e => e.Id == guid);
+        else
+            ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == id);
+
+        int h = Math.Abs((ev?.Id ?? Guid.Empty).GetHashCode());
+        var palettes = new (Rgba32 from, Rgba32 to)[] {
+            (new Rgba32(0, 255, 136), new Rgba32(167, 139, 250)),
+            (new Rgba32(14, 165, 233), new Rgba32(56, 189, 248)),
+            (new Rgba32(16, 185, 129), new Rgba32(52, 211, 153)),
+            (new Rgba32(245, 158, 11), new Rgba32(251, 191, 36)),
+            (new Rgba32(239, 68, 68), new Rgba32(248, 113, 113)),
+        };
+        var (from, to) = palettes[h % palettes.Length];
+        var c1 = new Color(from);
+        var c2 = new Color(to);
+
+        using var img = new Image<Rgba32>(1200, 630);
+        img.Mutate(ctx => ctx.Fill(new LinearGradientBrush(
+            new PointF(0, 0), new PointF(1200, 630),
+            GradientRepetitionMode.None,
+            new ColorStop(0f, c1), new ColorStop(1f, c2))));
+
+        using var ms = new MemoryStream();
+        await img.SaveAsPngAsync(ms);
+        return File(ms.ToArray(), "image/png");
     }
 
     private static string MinimalHtml(string title, string description, string? imageUrl, string? url = null, string? imageType = null)
