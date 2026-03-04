@@ -23,6 +23,7 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         [FromQuery] string? type = null,
         [FromQuery] string? date = null,
         [FromQuery] bool? hot = null,
+        [FromQuery] bool? dropping = null,
         [FromQuery] string? tab = null)
     {
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
@@ -68,6 +69,10 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         // Hot filter
         if (hot == true)
             query = query.Where(e => hotEventIds.Contains(e.Id));
+
+        // Dropping soon filter: SaleStartsAt within the next 24 hours
+        if (dropping == true)
+            query = query.Where(e => e.SaleStartsAt != null && e.SaleStartsAt > now && e.SaleStartsAt <= now.AddHours(24));
 
         var orderedQuery = tab == "past"
             ? query.OrderByDescending(e => e.StartsAt)

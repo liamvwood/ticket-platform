@@ -184,6 +184,7 @@ export class PageEvents extends LitElement {
   @state() private _typeFilter = '';
   @state() private _dateFilter = '';
   @state() private _hotFilter = false;
+  @state() private _dropFilter = false;
   @state() private _eventTypes: string[] = [];
   @state() private _events: any[] = [];
   @state() private _total = 0;
@@ -206,6 +207,7 @@ export class PageEvents extends LitElement {
         type: this._typeFilter || undefined,
         date: (this._dateFilter as 'today' | 'upcoming') || undefined,
         hot: this._hotFilter || undefined,
+        dropping: this._dropFilter || undefined,
         page: this._page,
         pageSize: this._pageSize,
       });
@@ -214,7 +216,7 @@ export class PageEvents extends LitElement {
         this._total = result.total;
         this._page = result.page;
         this._isDemo = false;
-      } else if (!this._typeFilter && !this._dateFilter && !this._hotFilter && this._tab === 'upcoming') {
+      } else if (!this._typeFilter && !this._dateFilter && !this._hotFilter && !this._dropFilter && this._tab === 'upcoming') {
         // No real events + no active filters → show demo events so the page is never empty by default
         this._events = DEMO_EVENTS;
         this._isDemo = true;
@@ -249,8 +251,12 @@ export class PageEvents extends LitElement {
     this._hotFilter = !this._hotFilter; this._page = 1; await this._load();
   }
 
+  private async _toggleDrop() {
+    this._dropFilter = !this._dropFilter; this._page = 1; await this._load();
+  }
+
   private async _clearFilters() {
-    this._typeFilter = ''; this._dateFilter = ''; this._hotFilter = false;
+    this._typeFilter = ''; this._dateFilter = ''; this._hotFilter = false; this._dropFilter = false;
     this._page = 1; await this._load();
   }
 
@@ -314,7 +320,7 @@ export class PageEvents extends LitElement {
 
   render() {
     const typeOptions = this._eventTypes.length > 0 ? this._eventTypes : ['comedy','music','sports','arts','food','tech','other'];
-    const hasFilters = !!(this._typeFilter || this._dateFilter || this._hotFilter);
+    const hasFilters = !!(this._typeFilter || this._dateFilter || this._hotFilter || this._dropFilter);
 
     return html`
       <h1>Austin Events</h1>
@@ -345,6 +351,7 @@ export class PageEvents extends LitElement {
           <option value="upcoming" ?selected=${this._dateFilter === 'upcoming'}>Upcoming</option>
         </select>
         <button class="filter-btn ${this._hotFilter ? 'filter-active' : ''}" @click=${this._toggleHot}>🔥 Hot</button>
+        <button class="filter-btn ${this._dropFilter ? 'filter-active' : ''}" @click=${() => this._toggleDrop()}>🎟 Dropping Soon</button>
         ${hasFilters ? html`<button class="filter-clear" @click=${this._clearFilters}>Clear filters</button>` : ''}
       </div>
 

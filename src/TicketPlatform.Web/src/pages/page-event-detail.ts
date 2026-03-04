@@ -355,6 +355,10 @@ export class PageEventDetail extends LitElement {
     if (this.error) return html`<div class="error">${this.error}</div>`;
     const ev = this.event;
 
+    const hasEnded = ev.endsAt
+      ? new Date(ev.endsAt) < new Date()
+      : new Date(ev.startsAt) < new Date();
+
     return html`
       <div class="back" @click=${() => navigate('/events')}>← Back to Events</div>
 
@@ -393,19 +397,30 @@ export class PageEventDetail extends LitElement {
 
       <h2>Tickets</h2>
 
+      ${hasEnded ? html`
+        <div style="background:#1a0a0a;border:1px solid #3d1515;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:0.75rem">
+          <span style="font-size:1.3rem">🚫</span>
+          <div>
+            <div style="font-weight:700;color:#ef4444;margin-bottom:0.2rem">This event has ended</div>
+            <div style="font-size:0.85rem;color:#6b7a8d">Ticket sales are closed. Check out upcoming events!</div>
+          </div>
+          <a href="/events" style="margin-left:auto;background:#1e2836;color:#F5F5F5;border:none;padding:0.5rem 1rem;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap">Browse Events</a>
+        </div>
+      ` : ''}
+
       <div class="ticket-types">
         ${ev.ticketTypes?.map((tt: any) => {
           const avail = this._available(tt);
           const qty = this.quantities[tt.id] ?? 0;
           const hasQty = qty > 0;
           return html`
-            <div class="tt-row ${hasQty ? 'selected' : ''}">
+            <div class="tt-row ${hasQty && !hasEnded ? 'selected' : ''}">
               <div class="tt-info">
-                <h3>${tt.name}</h3>
-                <p>$${tt.price.toFixed(2)} each · Max ${tt.maxPerOrder} per order · ${avail > 0 ? `${avail} left` : 'Sold out'}</p>
+                <h3 style="${hasEnded ? 'color:#6b7a8d' : ''}">${tt.name}</h3>
+                <p>${hasEnded ? html`<span style="color:#6b7a8d">N/A</span>` : html`$${tt.price.toFixed(2)} each · Max ${tt.maxPerOrder} per order · ${avail > 0 ? `${avail} left` : 'Sold out'}`}</p>
               </div>
               <div class="tt-right">
-                ${avail > 0 ? html`
+                ${hasEnded ? html`<div class="sold-out" style="color:#6b7a8d;border-color:#6b7a8d">Ended</div>` : avail > 0 ? html`
                   <div class="qty-row">
                     <button class="qty-btn" @click=${() => this._setQty(tt.id, -1, tt.maxPerOrder)}>−</button>
                     <span class="qty">${qty}</span>
@@ -438,7 +453,7 @@ export class PageEventDetail extends LitElement {
       </div>
 
       <!-- Order summary + buy CTA -->
-      ${(() => {
+      ${!hasEnded ? (() => {
         const lineItems = ev.ticketTypes?.filter((tt: any) => (this.quantities[tt.id] ?? 0) > 0) ?? [];
         const ticketTotal = lineItems.reduce((s: number, tt: any) => s + tt.price * (this.quantities[tt.id] ?? 0), 0);
         const grandTotal = (ticketTotal + this.platformFee).toFixed(2);
@@ -485,7 +500,7 @@ export class PageEventDetail extends LitElement {
             <p class="buy-cta-hint">Secure checkout · No hidden fees</p>
           </div>
         `;
-      })()}
+      })() : ''}
 
       ${this.showModal ? this._renderModal() : ''}
       ${this.toast ? html`<div class="toast ${this.toastClass}">${this.toast}</div>` : ''}

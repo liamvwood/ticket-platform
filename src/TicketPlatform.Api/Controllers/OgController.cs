@@ -30,12 +30,14 @@ public class OgController(AppDbContext db) : ControllerBase
 
         var title = $"{ev.Name} — Slingshot";
         var desc = $"{ev.StartsAt:ddd, MMM d 'at' h:mm tt} @ {ev.Venue.Name}. {ev.Description}".Truncate(200);
-        var imageUrl = !string.IsNullOrEmpty(ev.ThumbnailUrl)
-            ? ev.ThumbnailUrl
-            : $"{Request.Scheme}://{Request.Host}/og/events/{ev.Id}/image";
+        var isGenerated = string.IsNullOrEmpty(ev.ThumbnailUrl);
+        var imageUrl = isGenerated
+            ? $"{Request.Scheme}://{Request.Host}/og/events/{ev.Id}/image"
+            : ev.ThumbnailUrl;
+        var imageType = isGenerated ? "image/svg+xml" : null;
         var eventUrl = $"https://slingshot.dev/events/{ev.Slug}";
 
-        return Content(MinimalHtml(title, desc, imageUrl, eventUrl), "text/html");
+        return Content(MinimalHtml(title, desc, imageUrl, eventUrl, imageType), "text/html");
     }
 
     // GET /og/events/{id}/image — returns a deterministic SVG OG image (1200×630)
@@ -82,14 +84,18 @@ public class OgController(AppDbContext db) : ControllerBase
             </svg>
             """;
 
+        Response.Headers["Cache-Control"] = "public, max-age=86400";
         return Content(svg, "image/svg+xml");
     }
 
-    private static string MinimalHtml(string title, string description, string? imageUrl, string? url = null)
+    private static string MinimalHtml(string title, string description, string? imageUrl, string? url = null, string? imageType = null)
     {
         var img = imageUrl is not null
             ? $"""
               <meta property="og:image" content="{imageUrl}"/>
+              <meta property="og:image:width" content="1200"/>
+              <meta property="og:image:height" content="630"/>
+              {(imageType is not null ? $"""<meta property="og:image:type" content="{imageType}"/>""" : "")}
               <meta name="twitter:image" content="{imageUrl}"/>
               <meta name="twitter:card" content="summary_large_image"/>
               """

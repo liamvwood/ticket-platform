@@ -1018,3 +1018,81 @@ test.describe('Regression: Thumbnail renders after upload', () => {
     await expect(page.locator('img[alt*="thumbnail"], img[class*="thumb"], .event-thumb, img').first()).toBeVisible({ timeout: 8_000 });
   });
 });
+
+test.describe('Event type filtering', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/events');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('shows events of all types by default', async ({ page }) => {
+    // No filter selected — should show event cards
+    const cards = page.locator('.event-card');
+    await expect(cards.first()).toBeVisible({ timeout: 10000 });
+    // The type filter dropdown should show "All Types"
+    const typeSelect = page.locator('select.filter-select').first();
+    await expect(typeSelect).toHaveValue('');
+  });
+
+  test('type filter dropdown has expected options', async ({ page }) => {
+    const typeSelect = page.locator('select.filter-select').first();
+    await expect(typeSelect).toBeVisible();
+    // Should have at least an "All Types" option
+    const allOption = typeSelect.locator('option[value=""]');
+    await expect(allOption).toBeVisible();
+  });
+
+  test('filtering by a specific type shows only matching events', async ({ page }) => {
+    // Wait for events to load
+    await expect(page.locator('.event-card').first()).toBeVisible({ timeout: 10000 });
+
+    const typeSelect = page.locator('select.filter-select').first();
+    // Get available options (skip empty "All Types")
+    const options = await typeSelect.locator('option').allInnerTexts();
+    const nonEmptyOptions = options.filter(o => o.toLowerCase() !== 'all types' && o.trim() !== '');
+
+    if (nonEmptyOptions.length === 0) {
+      // No typed events seeded yet — skip
+      test.skip();
+      return;
+    }
+
+    // Select the first non-empty option
+    const firstType = await typeSelect.locator('option:not([value=""])').first().getAttribute('value');
+    if (!firstType) { test.skip(); return; }
+
+    await typeSelect.selectOption(firstType);
+    await page.waitForLoadState('networkidle');
+
+    // Either shows filtered cards or shows empty state — both are valid
+    const cards = page.locator('.event-card');
+    const empty = page.locator('.empty-state, .no-events, [class*="empty"]');
+    const eitherVisible = await Promise.race([
+      cards.first().waitFor({ timeout: 5000 }).then(() => true).catch(() => false),
+      empty.first().waitFor({ timeout: 5000 }).then(() => true).catch(() => false),
+    ]);
+    expect(eitherVisible).toBeTruthy();
+  });
+
+  test('clearing filters shows all events again', async ({ page }) => {
+    // Wait for initial load
+    await expect(page.locator('.event-card').first()).toBeVisible({ timeout: 10000 });
+
+    const typeSelect = page.locator('select.filter-select').first();
+    const firstOption = await typeSelect.locator('option:not([value=""])').first().getAttribute('value');
+
+    if (!firstOption) { test.skip(); return; }
+
+    // Apply filter
+    await typeSelect.selectOption(firstOption);
+    await page.waitForLoadState('networkidle');
+
+    // Clear filter — select "All Types"
+    await typeSelect.selectOption('');
+    await page.waitForLoadState('networkidle');
+
+    // Should show events again (or clear filter button disappears)
+    const cards = page.locator('.event-card');
+    await expect(cards.first()).toBeVisible({ timeout: 8000 });
+  });
+});

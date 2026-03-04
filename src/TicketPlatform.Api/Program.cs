@@ -229,4 +229,61 @@ if (app.Environment.IsDevelopment())
     }
 }
 
+// Seed demo events with varied EventTypes in Development (idempotent)
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<TicketPlatform.Infrastructure.Data.AppDbContext>();
+    var testVenueId = Guid.Parse("a0000000-0000-0000-0000-000000000001");
+
+    var seedEvents = new[]
+    {
+        new { Id = Guid.Parse("b0000000-0000-0000-0000-000000000001"), Name = "Khruangbin at Stubb's", EventType = "music",   StartsAt = DateTimeOffset.UtcNow.AddMonths(2) },
+        new { Id = Guid.Parse("b0000000-0000-0000-0000-000000000002"), Name = "Austin Comedy Night",   EventType = "comedy",  StartsAt = DateTimeOffset.UtcNow.AddMonths(1) },
+        new { Id = Guid.Parse("b0000000-0000-0000-0000-000000000003"), Name = "ACL Fest Early Bird",   EventType = "music",   StartsAt = DateTimeOffset.UtcNow.AddMonths(4) },
+        new { Id = Guid.Parse("b0000000-0000-0000-0000-000000000004"), Name = "Local Eats Food Fest",  EventType = "food",    StartsAt = DateTimeOffset.UtcNow.AddMonths(3) },
+        new { Id = Guid.Parse("b0000000-0000-0000-0000-000000000005"), Name = "Stand-Up Showcase",     EventType = "comedy",  StartsAt = DateTimeOffset.UtcNow.AddDays(10) },
+        new { Id = Guid.Parse("b0000000-0000-0000-0000-000000000006"), Name = "Willie Nelson Picnic",  EventType = "other",   StartsAt = DateTimeOffset.UtcNow.AddMonths(5) },
+    };
+
+    foreach (var seed in seedEvents)
+    {
+        if (!db.Events.Any(e => e.Id == seed.Id))
+        {
+            var ev = new TicketPlatform.Core.Entities.Event
+            {
+                Id = seed.Id,
+                VenueId = testVenueId,
+                Name = seed.Name,
+                Description = $"A great {seed.EventType} event in Austin.",
+                StartsAt = seed.StartsAt,
+                EndsAt = seed.StartsAt.AddHours(3),
+                SaleStartsAt = DateTimeOffset.UtcNow,
+                IsPublished = true,
+                EventType = seed.EventType,
+                CreatedAt = DateTimeOffset.UtcNow,
+            };
+            ev.Slug = TicketPlatform.Api.Services.SlugHelper.Generate(ev.Name, ev.Id);
+
+            var ticketType = new TicketPlatform.Core.Entities.TicketType
+            {
+                Id = Guid.NewGuid(),
+                EventId = ev.Id,
+                Name = "General Admission",
+                Price = 45m,
+                TotalQuantity = 200,
+                MaxPerOrder = 4,
+            };
+            var tickets = Enumerable.Range(0, ticketType.TotalQuantity)
+                .Select(_ => new TicketPlatform.Core.Entities.Ticket { Id = Guid.NewGuid(), TicketTypeId = ticketType.Id })
+                .ToList();
+
+            db.Events.Add(ev);
+            db.TicketTypes.Add(ticketType);
+            db.Tickets.AddRange(tickets);
+        }
+    }
+    db.SaveChanges();
+}
+
 app.Run();

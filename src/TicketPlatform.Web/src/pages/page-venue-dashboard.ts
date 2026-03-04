@@ -135,9 +135,12 @@ export class PageVenueDashboard extends LitElement {
   private async _loadPage(page: number) {
     this.loading = true;
     try {
+      const t0 = performance.now();
       const result = this.isOwner
         ? await api.getEventsAdmin(page, 20)
         : await api.getEvents({ page, pageSize: 20 });
+      const elapsed = performance.now() - t0;
+      console.info(`[perf] venue-dashboard load: ${elapsed.toFixed(0)}ms`);
       if (result?.items) {
         this.events = result.items;
         this.page = result.page;

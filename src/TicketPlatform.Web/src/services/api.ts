@@ -5,6 +5,7 @@ export interface EventFilters {
   type?: string;
   date?: 'today' | 'upcoming';
   hot?: boolean;
+  dropping?: boolean;
   page?: number;
   pageSize?: number;
 }
@@ -90,6 +91,7 @@ export const api = {
     if (filters?.type) p.set('type', filters.type);
     if (filters?.date) p.set('date', filters.date);
     if (filters?.hot) p.set('hot', 'true');
+    if (filters?.dropping) p.set('dropping', 'true');
     if (filters?.page) p.set('page', String(filters.page));
     if (filters?.pageSize) p.set('pageSize', String(filters.pageSize));
     const qs = p.toString();

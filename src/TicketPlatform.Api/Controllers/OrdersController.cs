@@ -45,6 +45,9 @@ public class OrdersController(AppDbContext db, AppMetrics metrics) : ControllerB
             if (tt is null) return NotFound($"TicketType {item.TicketTypeId} not found.");
             if (tt.Event.SaleStartsAt > DateTimeOffset.UtcNow)
                 return BadRequest("Tickets are not on sale yet.");
+            var eventEnded = tt.Event.EndsAt < DateTimeOffset.UtcNow;
+            if (eventEnded)
+                return BadRequest("Ticket sales for this event have closed.");
             if (item.Quantity < 1 || item.Quantity > tt.MaxPerOrder)
                 return BadRequest($"Quantity for '{tt.Name}' must be between 1 and {tt.MaxPerOrder}.");
         }

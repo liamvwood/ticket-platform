@@ -50,7 +50,7 @@ export class PageMyTickets extends LitElement {
       transition: all 0.15s;
     }
     .tab:hover { border-color: #00FF88; color: #a89cff; }
-    .tab.active { background: #00FF88; border-color: #00FF88; color: #fff; }
+    .tab.active { background: #00FF88; border-color: #00FF88; color: #0B0F14; }
 
     /* ── Ticket shell ── */
     .ticket-shell {
@@ -209,7 +209,7 @@ export class PageMyTickets extends LitElement {
     .empty-icon { font-size: 4rem; margin-bottom: 1rem; }
     .empty p { margin-bottom: 1.5rem; font-size: 1rem; }
     .btn-browse {
-      background: #00FF88; color: #fff;
+      background: #00FF88; color: #0B0F14;
       padding: 0.75rem 2rem; border-radius: 10px;
       font-weight: 700; cursor: pointer; border: none;
       font-family: inherit; font-size: 0.95rem;
