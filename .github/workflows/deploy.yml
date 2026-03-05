@@ -275,9 +275,11 @@ jobs:
           THUMBNAIL_BUCKET=$(aws ssm get-parameter \
             --name /ticket-platform/test/thumbnail-bucket-name \
             --query Parameter.Value --output text)
-          IRSA_ROLE_ARN=$(aws ssm get-parameter \
-            --name /ticket-platform/test/api-irsa-role-arn \
-            --query Parameter.Value --output text)
+          # Derive the IRSA role ARN from the deterministic name (ticket-platform-{env}-api-irsa).
+          # Account ID is the numeric prefix of ECR_REGISTRY — avoids needing iam:GetRole or a
+          # separate SSM parameter that requires a terraform apply to create.
+          ACCOUNT_ID=$(echo "$ECR_REGISTRY" | cut -d. -f1)
+          IRSA_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/ticket-platform-test-api-irsa"
 
           helm upgrade --install ticket-platform-test ./helm \
             --namespace ticket-platform-test \
