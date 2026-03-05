@@ -1,4 +1,9 @@
 # Execution role for the Lambda@Edge image transformer
+import {
+  to = aws_iam_role.lambda_edge_image
+  id = "ticket-platform-${var.environment}-lambda-edge-image"
+}
+
 resource "aws_iam_role" "lambda_edge_image" {
   provider = aws.us_east_1
   name     = "ticket-platform-${var.environment}-lambda-edge-image"
