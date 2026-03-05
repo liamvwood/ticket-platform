@@ -123,6 +123,10 @@ if (!string.IsNullOrWhiteSpace(redisConn))
         ConnectionMultiplexer.Connect(redisConn));
 }
 
+// Cache generated OG images in-process so ImageSharp only runs once per event.
+// SizeLimit of 500 allows ~500 unique event images before LRU eviction (~15 MB).
+builder.Services.AddMemoryCache(o => o.SizeLimit = 500);
+
 var app = builder.Build();
 
 // Global exception handler — always return clean JSON, never leak stack traces

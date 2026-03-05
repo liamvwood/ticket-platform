@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
@@ -15,7 +16,7 @@ namespace TicketPlatform.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("og")]
-public class OgController(AppDbContext db) : ControllerBase
+public class OgController(AppDbContext db, IMemoryCache cache) : ControllerBase
 {
     // GET /og/events/{id} — returns minimal HTML with OG tags for social crawlers
     [HttpGet("events/{id}")]
@@ -44,7 +45,8 @@ public class OgController(AppDbContext db) : ControllerBase
         return Content(MinimalHtml(title, desc, imageUrl, eventUrl, imageType), "text/html");
     }
 
-    // GET /og/events/{id}/image — returns PNG OG image (1200×630), iMessage compatible
+    // GET /og/events/{id}/image — returns PNG OG image (1200×630), iMessage compatible.
+    // The gradient is deterministic from the event ID so the result is safe to cache indefinitely.
     [HttpGet("events/{id}/image")]
     [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)]
     public async Task<IActionResult> EventImage(string id)
@@ -57,27 +59,36 @@ public class OgController(AppDbContext db) : ControllerBase
         else
             ev = await db.Events.FirstOrDefaultAsync(e => e.Slug == id);
 
-        int h = Math.Abs((ev?.Id ?? Guid.Empty).GetHashCode());
-        var palettes = new (Rgba32 from, Rgba32 to)[] {
-            (new Rgba32(0, 255, 136), new Rgba32(167, 139, 250)),
-            (new Rgba32(14, 165, 233), new Rgba32(56, 189, 248)),
-            (new Rgba32(16, 185, 129), new Rgba32(52, 211, 153)),
-            (new Rgba32(245, 158, 11), new Rgba32(251, 191, 36)),
-            (new Rgba32(239, 68, 68), new Rgba32(248, 113, 113)),
-        };
-        var (from, to) = palettes[h % palettes.Length];
-        var c1 = new Color(from);
-        var c2 = new Color(to);
+        var eventId = ev?.Id ?? Guid.Empty;
+        var cacheKey = $"og:image:{eventId}";
 
-        using var img = new Image<Rgba32>(1200, 630);
-        img.Mutate(ctx => ctx.Fill(new LinearGradientBrush(
-            new PointF(0, 0), new PointF(1200, 630),
-            GradientRepetitionMode.None,
-            new ColorStop(0f, c1), new ColorStop(1f, c2))));
+        var pngBytes = await cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
+            entry.Size = 1; // each image ~30 KB; size units are arbitrary, used for SizeLimit
 
-        using var ms = new MemoryStream();
-        await img.SaveAsPngAsync(ms);
-        return File(ms.ToArray(), "image/png");
+            int h = Math.Abs(eventId.GetHashCode());
+            var palettes = new (Rgba32 from, Rgba32 to)[] {
+                (new Rgba32(0, 255, 136), new Rgba32(167, 139, 250)),
+                (new Rgba32(14, 165, 233), new Rgba32(56, 189, 248)),
+                (new Rgba32(16, 185, 129), new Rgba32(52, 211, 153)),
+                (new Rgba32(245, 158, 11), new Rgba32(251, 191, 36)),
+                (new Rgba32(239, 68, 68), new Rgba32(248, 113, 113)),
+            };
+            var (from, to) = palettes[h % palettes.Length];
+
+            using var img = new Image<Rgba32>(1200, 630);
+            img.Mutate(ctx => ctx.Fill(new LinearGradientBrush(
+                new PointF(0, 0), new PointF(1200, 630),
+                GradientRepetitionMode.None,
+                new ColorStop(0f, new Color(from)), new ColorStop(1f, new Color(to)))));
+
+            using var ms = new MemoryStream();
+            await img.SaveAsPngAsync(ms);
+            return ms.ToArray();
+        });
+
+        return File(pngBytes!, "image/png");
     }
 
     private static string MinimalHtml(string title, string description, string? imageUrl, string? url = null, string? imageType = null)
