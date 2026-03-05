@@ -272,14 +272,23 @@ jobs:
           OWNER_PASSWORD=$(aws ssm get-parameter \
             --name /ticket-platform/test/owner-password \
             --with-decryption --query Parameter.Value --output text)
+
+          # S3 thumbnail bucket — optional until `terraform apply` has been run for
+          # the S3/IRSA resources. Falls back gracefully to the data URI path in the API.
           THUMBNAIL_BUCKET=$(aws ssm get-parameter \
             --name /ticket-platform/test/thumbnail-bucket-name \
-            --query Parameter.Value --output text)
-          # Derive the IRSA role ARN from the deterministic name (ticket-platform-{env}-api-irsa).
-          # Account ID is the numeric prefix of ECR_REGISTRY — avoids needing iam:GetRole or a
-          # separate SSM parameter that requires a terraform apply to create.
-          ACCOUNT_ID=$(echo "$ECR_REGISTRY" | cut -d. -f1)
-          IRSA_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/ticket-platform-test-api-irsa"
+            --query Parameter.Value --output text 2>/dev/null || echo "")
+
+          # Build optional S3 helm args only when the bucket is provisioned.
+          S3_ARGS=""
+          if [ -n "$THUMBNAIL_BUCKET" ]; then
+            ACCOUNT_ID=$(echo "$ECR_REGISTRY" | cut -d. -f1)
+            IRSA_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/ticket-platform-test-api-irsa"
+            S3_ARGS="--set aws.bucketName=${THUMBNAIL_BUCKET} --set aws.region=${{ env.AWS_REGION }} --set serviceAccount.roleArn=${IRSA_ROLE_ARN}"
+            echo "S3 thumbnails enabled: bucket=${THUMBNAIL_BUCKET}"
+          else
+            echo "S3 thumbnails not yet provisioned — falling back to data URI storage"
+          fi
 
           helm upgrade --install ticket-platform-test ./helm \
             --namespace ticket-platform-test \
@@ -297,9 +306,7 @@ jobs:
             --set "secrets.ownerPassword=$OWNER_PASSWORD" \
             --set secrets.stripeSecretKey="unused" \
             --set secrets.stripeWebhookSecret="unused" \
-            --set "aws.bucketName=$THUMBNAIL_BUCKET" \
-            --set "aws.region=${{ env.AWS_REGION }}" \
-            --set "serviceAccount.roleArn=$IRSA_ROLE_ARN" \
+            $S3_ARGS \
             --timeout 5m \
             --wait
 
