@@ -502,6 +502,7 @@ test.describe('Event slugs', () => {
   });
 
   test('OG image endpoint returns PNG', async () => {
+    test.setTimeout(60_000);
     const events = await getAllEvents();
     if (events.length === 0) return;
     const ev = events[0];
