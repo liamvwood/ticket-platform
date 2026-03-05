@@ -211,6 +211,27 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         return Ok(new { ev.Id, ev.Name, ev.Description, ev.StartsAt, ev.EndsAt, ev.IsPublished });
     }
 
+    // POST /events/{id:guid}/image-upload-url — generate a presigned S3 PUT URL for direct client upload
+    // The client uploads the original JPEG directly to S3, then references the returned cdnImageUrl.
+    [HttpPost("{id:guid}/image-upload-url")]
+    [Authorize(Roles = "VenueAdmin,AppOwner")]
+    public async Task<IActionResult> GetImageUploadUrl(Guid id)
+    {
+        var ev = await db.Events.FindAsync(id);
+        if (ev is null) return NotFound();
+
+        var imageId = Guid.NewGuid();
+        var result = await storage.GeneratePresignedUploadUrlAsync(imageId);
+
+        return Ok(new
+        {
+            uploadUrl = result.UploadUrl,
+            imageId = result.ImageId,
+            cdnImageUrl = result.CdnImageUrl,
+            expiresInSeconds = 900,
+        });
+    }
+
     // POST /events/{id}/thumbnail — multipart file upload (JPEG/PNG/WebP)
     [HttpPost("{id:guid}/thumbnail")]
     [Authorize(Roles = "VenueAdmin,AppOwner")]

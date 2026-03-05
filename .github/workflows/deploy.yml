@@ -290,6 +290,23 @@ jobs:
             echo "S3 thumbnails not yet provisioned — falling back to data URI storage"
           fi
 
+          # Image pipeline CDN — optional, provisioned by deploy-image-pipeline.yml
+          IMAGE_PIPELINE_ARGS=""
+          CDN_DOMAIN=$(aws ssm get-parameter \
+            --name /ticket-platform/test/image-cdn-domain \
+            --query Parameter.Value --output text 2>/dev/null || echo "")
+          IMAGE_BUCKET=$(aws ssm get-parameter \
+            --name /ticket-platform/test/image-pipeline-bucket \
+            --query Parameter.Value --output text 2>/dev/null || echo "")
+          if [ -n "$CDN_DOMAIN" ]; then
+            IMAGE_PIPELINE_ARGS="--set aws.cdnDomain=${CDN_DOMAIN}"
+            echo "Image pipeline CDN enabled: ${CDN_DOMAIN}"
+          fi
+          if [ -n "$IMAGE_BUCKET" ]; then
+            IMAGE_PIPELINE_ARGS="${IMAGE_PIPELINE_ARGS} --set aws.imageBucket=${IMAGE_BUCKET}"
+            echo "Image pipeline bucket enabled: ${IMAGE_BUCKET}"
+          fi
+
           helm upgrade --install ticket-platform-test ./helm \
             --namespace ticket-platform-test \
             --create-namespace \
@@ -307,6 +324,7 @@ jobs:
             --set secrets.stripeSecretKey="unused" \
             --set secrets.stripeWebhookSecret="unused" \
             $S3_ARGS \
+            $IMAGE_PIPELINE_ARGS \
             --timeout 5m \
             --wait
 

@@ -66,6 +66,12 @@ aws:
   # When empty the API falls back to base64 data URLs (local dev only).
   bucketName: ""
   region: "us-east-1"
+  # CloudFront domain for the image pipeline CDN (e.g. d1234abcd.cloudfront.net).
+  # When set, OG preview images use the CDN-resized URL instead of the generated gradient.
+  cdnDomain: ""
+  # S3 bucket for original image uploads (presigned URL flow).
+  # Populated by the image-pipeline Terraform stack.
+  imageBucket: ""
 
 monitoring:
   enabled: false

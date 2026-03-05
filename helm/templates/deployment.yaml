@@ -78,6 +78,14 @@ spec:
             - name: Aws__Region
               value: {{ .Values.aws.region | quote }}
             {{- end }}
+            {{- if .Values.aws.cdnDomain }}
+            - name: Aws__CdnDomain
+              value: {{ .Values.aws.cdnDomain | quote }}
+            {{- end }}
+            {{- if .Values.aws.imageBucket }}
+            - name: Aws__ImageBucket
+              value: {{ .Values.aws.imageBucket | quote }}
+            {{- end }}
           resources:
             requests:
               cpu: {{ .Values.resources.requests.cpu }}

@@ -16,8 +16,10 @@ namespace TicketPlatform.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("og")]
-public class OgController(AppDbContext db, IMemoryCache cache) : ControllerBase
+public class OgController(AppDbContext db, IMemoryCache cache, IConfiguration config) : ControllerBase
 {
+    private readonly string? _cdnDomain = config["Aws:CdnDomain"];
+
     // GET /og/events/{id} — returns minimal HTML with OG tags for social crawlers
     [HttpGet("events/{id}")]
     [ResponseCache(Duration = 300)]
@@ -35,12 +37,30 @@ public class OgController(AppDbContext db, IMemoryCache cache) : ControllerBase
 
         var title = $"{ev.Name} — Slingshot";
         var desc = $"{ev.StartsAt:ddd, MMM d 'at' h:mm tt} @ {ev.Venue.Name}. {ev.Description}".Truncate(200);
-        // Data URIs cannot be fetched by OG crawlers — treat them as missing and use the generated image.
+
+        // Resolve the OG image URL using the best available source:
+        // 1. CDN-transformed 1200×630 version (if CDN is configured and event has an S3 thumbnail)
+        // 2. The raw S3 thumbnail URL (if fetchable but CDN not configured)
+        // 3. Server-generated gradient image (fallback for events without any thumbnail)
         var hasFetchableThumb = !string.IsNullOrEmpty(ev.ThumbnailUrl) && ev.ThumbnailUrl!.StartsWith("http");
-        var imageUrl = hasFetchableThumb
-            ? ev.ThumbnailUrl
-            : $"{Request.Scheme}://{Request.Host}/og/events/{ev.Id}/image";
-        var imageType = hasFetchableThumb ? null : "image/png";
+        string imageUrl;
+        string? imageType = null;
+
+        if (hasFetchableThumb && !string.IsNullOrWhiteSpace(_cdnDomain))
+        {
+            // Use CDN-resized 1200×630 cover variant for optimal OG preview
+            imageUrl = $"https://{_cdnDomain}/img/1200x630/cover/{ev.Id}.jpg";
+        }
+        else if (hasFetchableThumb)
+        {
+            imageUrl = ev.ThumbnailUrl!;
+        }
+        else
+        {
+            imageUrl = $"{Request.Scheme}://{Request.Host}/og/events/{ev.Id}/image";
+            imageType = "image/png";
+        }
+
         var eventUrl = $"https://slingshot.dev/events/{ev.Slug}";
 
         return Content(MinimalHtml(title, desc, imageUrl, eventUrl, imageType), "text/html");
