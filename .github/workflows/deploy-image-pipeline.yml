@@ -68,6 +68,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Embed bucket config into Lambda package
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET_NAME="ticket-platform-test-images-${ACCOUNT_ID}"
+          cat > ${{ env.LAMBDA_DIR }}/config.js << EOF
+          'use strict';
+          module.exports = { IMAGE_BUCKET: '${BUCKET_NAME}', BUCKET_REGION: '${AWS_REGION}' };
+          EOF
+          echo "✅ Embedded bucket: ${BUCKET_NAME}"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
