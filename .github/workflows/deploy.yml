@@ -272,6 +272,12 @@ jobs:
           OWNER_PASSWORD=$(aws ssm get-parameter \
             --name /ticket-platform/test/owner-password \
             --with-decryption --query Parameter.Value --output text)
+          THUMBNAIL_BUCKET=$(aws ssm get-parameter \
+            --name /ticket-platform/test/thumbnail-bucket-name \
+            --query Parameter.Value --output text)
+          IRSA_ROLE_ARN=$(aws ssm get-parameter \
+            --name /ticket-platform/test/api-irsa-role-arn \
+            --query Parameter.Value --output text)
 
           helm upgrade --install ticket-platform-test ./helm \
             --namespace ticket-platform-test \
@@ -289,6 +295,9 @@ jobs:
             --set "secrets.ownerPassword=$OWNER_PASSWORD" \
             --set secrets.stripeSecretKey="unused" \
             --set secrets.stripeWebhookSecret="unused" \
+            --set "aws.bucketName=$THUMBNAIL_BUCKET" \
+            --set "aws.region=${{ env.AWS_REGION }}" \
+            --set "serviceAccount.roleArn=$IRSA_ROLE_ARN" \
             --timeout 5m \
             --wait
 

@@ -1355,14 +1355,18 @@ test.describe('Rich link previews', () => {
 
     const html = await fetch(`${API}/og/events/${thumbEventId}`).then(r => r.text());
     if (ev.thumbnailUrl.startsWith('data:')) {
-      // In environments without S3 (e.g. the test ring), the storage service falls
-      // back to a base64 data URI. Crawlers cannot fetch data URIs, so the controller
-      // treats them as missing and falls back to the generated gradient image.
+      // In environments without S3, the storage service falls back to a base64 data URI.
+      // Crawlers cannot fetch data URIs, so the controller falls back to the generated image.
       expect(html).toMatch(new RegExp(`og/events/${thumbEventId}/image`));
     } else {
       // Real S3 URL — the thumbnail should be used directly in og:image.
       expect(html).toContain(ev.thumbnailUrl);
       expect(html).not.toMatch(new RegExp(`og/events/${thumbEventId}/image`));
+
+      // The S3 URL must be publicly fetchable (crawlers will HTTP GET it).
+      const imgRes = await fetch(ev.thumbnailUrl);
+      expect(imgRes.status).toBe(200);
+      expect(imgRes.headers.get('content-type')).toMatch(/^image\//);
     }
   });
 

@@ -20,6 +20,9 @@ spec:
         - name: {{ . }}
         {{- end }}
       {{- end }}
+      {{- if .Values.serviceAccount.roleArn }}
+      serviceAccountName: {{ .Release.Name }}-api
+      {{- end }}
       containers:
         - name: api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -68,6 +71,12 @@ spec:
             {{- range $key, $val := .Values.extraEnv }}
             - name: {{ $key }}
               value: {{ $val | quote }}
+            {{- end }}
+            {{- if .Values.aws.bucketName }}
+            - name: Aws__BucketName
+              value: {{ .Values.aws.bucketName | quote }}
+            - name: Aws__Region
+              value: {{ .Values.aws.region | quote }}
             {{- end }}
           resources:
             requests:

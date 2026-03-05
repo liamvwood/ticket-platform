@@ -55,5 +55,17 @@ secrets:
   ownerPassword: ""
   redisConnectionString: ""
 
+serviceAccount:
+  # IRSA role ARN — if set, a ServiceAccount is created and annotated so the API
+  # pod can assume the role (grants S3 thumbnail upload + SSM read permissions).
+  # Set via --set serviceAccount.roleArn=... in CI; leave empty for local dev.
+  roleArn: ""
+
+aws:
+  # S3 bucket name for event thumbnail storage.
+  # When empty the API falls back to base64 data URLs (local dev only).
+  bucketName: ""
+  region: "us-east-1"
+
 monitoring:
   enabled: false

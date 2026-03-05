@@ -48,6 +48,13 @@ resource "aws_ssm_parameter" "db_connection_string" {
   ])
 }
 
+# IRSA role ARN — read by CI to annotate the API ServiceAccount
+resource "aws_ssm_parameter" "api_irsa_role_arn" {
+  name  = "/ticket-platform/${var.environment}/api-irsa-role-arn"
+  type  = "String"
+  value = aws_iam_role.api_irsa.arn
+}
+
 # Stripe — placeholders; update with real keys before going live
 resource "aws_ssm_parameter" "stripe_secret_key" {
   name  = "/ticket-platform/${var.environment}/stripe-secret-key"
