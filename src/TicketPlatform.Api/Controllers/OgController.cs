@@ -35,11 +35,12 @@ public class OgController(AppDbContext db, IMemoryCache cache) : ControllerBase
 
         var title = $"{ev.Name} — Slingshot";
         var desc = $"{ev.StartsAt:ddd, MMM d 'at' h:mm tt} @ {ev.Venue.Name}. {ev.Description}".Truncate(200);
-        var isGenerated = string.IsNullOrEmpty(ev.ThumbnailUrl);
-        var imageUrl = isGenerated
-            ? $"{Request.Scheme}://{Request.Host}/og/events/{ev.Id}/image"
-            : ev.ThumbnailUrl;
-        var imageType = isGenerated ? "image/png" : null;
+        // Data URIs cannot be fetched by OG crawlers — treat them as missing and use the generated image.
+        var hasFetchableThumb = !string.IsNullOrEmpty(ev.ThumbnailUrl) && ev.ThumbnailUrl!.StartsWith("http");
+        var imageUrl = hasFetchableThumb
+            ? ev.ThumbnailUrl
+            : $"{Request.Scheme}://{Request.Host}/og/events/{ev.Id}/image";
+        var imageType = hasFetchableThumb ? null : "image/png";
         var eventUrl = $"https://slingshot.dev/events/{ev.Slug}";
 
         return Content(MinimalHtml(title, desc, imageUrl, eventUrl, imageType), "text/html");

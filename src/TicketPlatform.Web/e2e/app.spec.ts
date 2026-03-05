@@ -1348,14 +1348,22 @@ test.describe('Rich link previews', () => {
     expect(html).toContain('image/png');
   });
 
-  test('og:image points to thumbnail URL when event has a thumbnail', async () => {
+  test('og:image points to thumbnail URL when event has a fetchable (http) thumbnail', async () => {
     if (!thumbEventId) return;
     const ev = (await apiGet(`/events/${thumbEventId}`)).json();
     if (!ev.thumbnailUrl) return; // upload may be skipped in environments without S3
 
     const html = await fetch(`${API}/og/events/${thumbEventId}`).then(r => r.text());
-    expect(html).toContain(ev.thumbnailUrl);
-    expect(html).not.toMatch(new RegExp(`og/events/${thumbEventId}/image`));
+    if (ev.thumbnailUrl.startsWith('data:')) {
+      // In environments without S3 (e.g. the test ring), the storage service falls
+      // back to a base64 data URI. Crawlers cannot fetch data URIs, so the controller
+      // treats them as missing and falls back to the generated gradient image.
+      expect(html).toMatch(new RegExp(`og/events/${thumbEventId}/image`));
+    } else {
+      // Real S3 URL — the thumbnail should be used directly in og:image.
+      expect(html).toContain(ev.thumbnailUrl);
+      expect(html).not.toMatch(new RegExp(`og/events/${thumbEventId}/image`));
+    }
   });
 
   // ── All event types produce valid images ───────────────────────────────
