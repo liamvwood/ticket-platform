@@ -26,6 +26,9 @@ spec:
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
             - containerPort: 80
+          env:
+            - name: API_INTERNAL_URL
+              value: "http://{{ .Release.Name }}-api:{{ .Values.service.port }}"
           resources:
             requests:
               cpu: "50m"
