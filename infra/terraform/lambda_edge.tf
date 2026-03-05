@@ -25,11 +25,4 @@ resource "aws_lambda_function" "image_transformer" {
 
   memory_size = 512
   timeout     = 10
-
-  environment {
-    variables = {
-      IMAGE_BUCKET      = aws_s3_bucket.images_original.bucket
-      AWS_BUCKET_REGION = var.aws_region
-    }
-  }
 }
