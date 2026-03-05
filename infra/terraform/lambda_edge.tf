@@ -7,6 +7,11 @@ data "archive_file" "image_transformer" {
 }
 
 # Lambda@Edge functions must be deployed in us-east-1
+import {
+  to = aws_lambda_function.image_transformer
+  id = "ticket-platform-${var.environment}-image-transformer"
+}
+
 resource "aws_lambda_function" "image_transformer" {
   provider = aws.us_east_1
 
