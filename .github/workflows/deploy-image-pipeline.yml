@@ -8,13 +8,6 @@ on:
       - 'infra/image-transformer/**'
       - '.github/workflows/deploy-image-pipeline.yml'
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'test'
-        type: choice
-        options: [test, prod]
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -57,10 +50,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-lambda
     environment: test
-    # Run on push to main OR manual dispatch targeting test
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && inputs.environment == 'test')
 
     steps:
       - name: Checkout
@@ -126,79 +115,3 @@ jobs:
           echo "✅ CDN domain: $CDN_DOMAIN"
           echo "✅ Image bucket: $IMAGE_BUCKET"
 
-  # ─────────────────────────────────────────────────────────────
-  # 3. TERRAFORM – PROD (requires test to pass + env approval)
-  # ─────────────────────────────────────────────────────────────
-  deploy-prod:
-    name: Terraform – Prod
-    runs-on: ubuntu-latest
-    needs: deploy-test
-    environment: prod
-    # Run on push to main (after test passes) OR manual dispatch targeting prod
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && inputs.environment == 'prod')
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download Lambda artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: image-transformer-${{ github.sha }}
-          path: infra/image-transformer/
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '~> 1.6'
-
-      - name: Terraform Init (prod)
-        working-directory: ${{ env.TF_DIR }}
-        run: |
-          terraform init \
-            -backend-config=environments/prod-backend.tfvars \
-            -reconfigure
-
-      - name: Terraform Plan (prod)
-        working-directory: ${{ env.TF_DIR }}
-        run: |
-          terraform plan \
-            -var-file=environments/prod.tfvars \
-            -out=tfplan-prod \
-            -detailed-exitcode \
-            -input=false
-        continue-on-error: true
-        id: plan
-
-      - name: Terraform Apply (prod)
-        working-directory: ${{ env.TF_DIR }}
-        if: steps.plan.outcome == 'success' || steps.plan.outputs.exitcode == '2'
-        run: |
-          terraform apply -input=false tfplan-prod
-
-      - name: Export outputs to SSM (prod)
-        working-directory: ${{ env.TF_DIR }}
-        run: |
-          CDN_DOMAIN=$(terraform output -raw cdn_domain)
-          IMAGE_BUCKET=$(terraform output -raw image_upload_bucket)
-          aws ssm put-parameter \
-            --name "/ticket-platform/prod/image-cdn-domain" \
-            --value "$CDN_DOMAIN" \
-            --type "String" \
-            --overwrite
-          aws ssm put-parameter \
-            --name "/ticket-platform/prod/image-pipeline-bucket" \
-            --value "$IMAGE_BUCKET" \
-            --type "String" \
-            --overwrite
-          echo "✅ CDN domain: $CDN_DOMAIN"
-          echo "✅ Image bucket: $IMAGE_BUCKET"
