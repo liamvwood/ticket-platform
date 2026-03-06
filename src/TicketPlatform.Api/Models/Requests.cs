@@ -50,6 +50,7 @@ public record EventResponseDto(
     string Slug,
     string Description,
     string? ThumbnailUrl,
+    string? CdnImageBase,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
     DateTimeOffset SaleStartsAt,

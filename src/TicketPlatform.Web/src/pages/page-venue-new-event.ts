@@ -194,10 +194,16 @@ export class PageVenueNewEvent extends LitElement {
   private async _publish() {
     this.loading = true;
     try {
-      // Upload thumbnail first if selected
+      // Upload thumbnail via presigned S3 PUT if selected
       if (this.thumbnailFile) {
-        try { await api.uploadEventThumbnail(this.createdEventId, this.thumbnailFile); }
-        catch (err: any) { this.error = `Thumbnail upload failed: ${err.message}. Event not published.`; this.loading = false; return; }
+        try {
+          const { uploadUrl } = await api.getEventImageUploadUrl(this.createdEventId);
+          await fetch(uploadUrl, {
+            method: 'PUT',
+            body: this.thumbnailFile,
+            headers: { 'Content-Type': 'image/jpeg' },
+          });
+        } catch (err: any) { this.error = `Thumbnail upload failed: ${err.message}. Event not published.`; this.loading = false; return; }
       }
       await api.publishEvent(this.createdEventId);
       navigate('/venue');

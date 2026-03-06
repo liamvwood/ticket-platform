@@ -11,8 +11,9 @@ namespace TicketPlatform.Api.Controllers;
 
 [ApiController]
 [Route("events")]
-public class EventsController(AppDbContext db, AppMetrics metrics, IStorageService storage, IPaymentProvider paymentProvider) : ControllerBase
+public class EventsController(AppDbContext db, AppMetrics metrics, IStorageService storage, IPaymentProvider paymentProvider, IConfiguration config) : ControllerBase
 {
+    private readonly string? _cdnDomain = config["Aws:CdnDomain"];
     private const int DefaultPageSize = 12;
     private const int MaxPageSize = 100;
 
@@ -85,7 +86,7 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
             .Take(pageSize)
             .ToListAsync();
 
-        var dtoItems = items.Select(e => ToDto(e, hotEventIds, now)).ToList();
+        var dtoItems = items.Select(e => ToDto(e, hotEventIds, now, _cdnDomain)).ToList();
 
         return Ok(new EventsPagedResult(
             Items: dtoItems,
@@ -128,7 +129,7 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
             .Take(pageSize)
             .ToListAsync();
 
-        var dtoItems = items.Select(e => ToDto(e, hotEventIds, now)).ToList();
+        var dtoItems = items.Select(e => ToDto(e, hotEventIds, now, _cdnDomain)).ToList();
 
         return Ok(new EventsPagedResult(
             Items: dtoItems,
@@ -140,25 +141,25 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<Event>> GetById(Guid id)
+    public async Task<IActionResult> GetById(Guid id)
     {
         var ev = await db.Events
             .Include(e => e.Venue)
             .Include(e => e.TicketTypes)
             .FirstOrDefaultAsync(e => e.Id == id);
 
-        return ev is null ? NotFound() : Ok(ev);
+        return ev is null ? NotFound() : Ok(ToDto(ev, [], DateTimeOffset.UtcNow, _cdnDomain));
     }
 
     [HttpGet("{slug}")]
-    public async Task<ActionResult<Event>> GetBySlug(string slug)
+    public async Task<IActionResult> GetBySlug(string slug)
     {
         var ev = await db.Events
             .Include(e => e.Venue)
             .Include(e => e.TicketTypes)
             .FirstOrDefaultAsync(e => e.Slug == slug);
 
-        return ev is null ? NotFound() : Ok(ev);
+        return ev is null ? NotFound() : Ok(ToDto(ev, [], DateTimeOffset.UtcNow, _cdnDomain));
     }
 
     [HttpPost]
@@ -212,7 +213,8 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
     }
 
     // POST /events/{id:guid}/image-upload-url — generate a presigned S3 PUT URL for direct client upload
-    // The client uploads the original JPEG directly to S3, then references the returned cdnImageUrl.
+    // The event's ThumbnailUrl is pre-saved as the CDN URL (deterministic, based on event ID).
+    // The client uploads the original JPEG directly to S3, then the CDN serves it on-demand.
     [HttpPost("{id:guid}/image-upload-url")]
     [Authorize(Roles = "VenueAdmin,AppOwner")]
     public async Task<IActionResult> GetImageUploadUrl(Guid id)
@@ -220,8 +222,15 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         var ev = await db.Events.FindAsync(id);
         if (ev is null) return NotFound();
 
-        var imageId = Guid.NewGuid();
-        var result = await storage.GeneratePresignedUploadUrlAsync(imageId);
+        // Use event ID so OgController and responsive images use the same deterministic CDN path
+        var result = await storage.GeneratePresignedUploadUrlAsync(id);
+
+        // Pre-save the CDN URL so it's available immediately after the client completes the PUT
+        if (result.CdnImageUrl is not null)
+        {
+            ev.ThumbnailUrl = result.CdnImageUrl;
+            await db.SaveChangesAsync();
+        }
 
         return Ok(new
         {
@@ -443,13 +452,16 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         return ids.ToHashSet();
     }
 
-    private static EventResponseDto ToDto(Event e, HashSet<Guid> hotEventIds, DateTimeOffset now) => new(
+    private static EventResponseDto ToDto(Event e, HashSet<Guid> hotEventIds, DateTimeOffset now, string? cdnDomain) => new(
         Id: e.Id,
         VenueId: e.VenueId,
         Name: e.Name,
         Slug: e.Slug,
         Description: e.Description,
         ThumbnailUrl: e.ThumbnailUrl,
+        CdnImageBase: !string.IsNullOrWhiteSpace(cdnDomain) && !string.IsNullOrWhiteSpace(e.ThumbnailUrl)
+            ? $"https://{cdnDomain}"
+            : null,
         StartsAt: e.StartsAt,
         EndsAt: e.EndsAt,
         SaleStartsAt: e.SaleStartsAt,

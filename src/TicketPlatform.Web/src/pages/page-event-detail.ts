@@ -369,8 +369,15 @@ export class PageEventDetail extends LitElement {
 
       <div class="header">
         ${ev.thumbnailUrl ? html`
-          <img src=${ev.thumbnailUrl} alt=${ev.name} loading="lazy"
-            style="width:100%;max-height:320px;object-fit:cover;border-radius:14px;margin-bottom:1.5rem" />
+          ${ev.cdnImageBase
+            ? html`<img
+                src="${ev.cdnImageBase}/img/900x450/cover/${ev.id}.jpg"
+                srcset="${ev.cdnImageBase}/img/640x320/cover/${ev.id}.jpg 640w, ${ev.cdnImageBase}/img/900x450/cover/${ev.id}.jpg 900w, ${ev.cdnImageBase}/img/1200x630/cover/${ev.id}.jpg 1200w"
+                sizes="(max-width: 640px) 100vw, 900px"
+                alt=${ev.name} loading="lazy"
+                style="width:100%;max-height:320px;object-fit:cover;border-radius:14px;margin-bottom:1.5rem" />`
+            : html`<img src=${ev.thumbnailUrl} alt=${ev.name} loading="lazy"
+                style="width:100%;max-height:320px;object-fit:cover;border-radius:14px;margin-bottom:1.5rem" />`}
         ` : ''}
         <div class="header-top">
           <div>

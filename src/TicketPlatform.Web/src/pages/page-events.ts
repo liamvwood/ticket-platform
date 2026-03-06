@@ -397,7 +397,13 @@ export class PageEvents extends LitElement {
             <div class="event-card" @click=${() => navigate(`/events/${ev.slug || ev.id}`)}>
               <div class="event-thumb ${ev.thumbnailUrl ? '' : this._thumbClass(ev)}">
                 ${ev.thumbnailUrl
-                  ? html`<img src=${ev.thumbnailUrl} alt=${ev.name} loading="lazy" />`
+                  ? ev.cdnImageBase
+                    ? html`<img
+                        src="${ev.cdnImageBase}/img/640x400/cover/${ev.id}.jpg"
+                        srcset="${ev.cdnImageBase}/img/320x200/cover/${ev.id}.jpg 320w, ${ev.cdnImageBase}/img/640x400/cover/${ev.id}.jpg 640w"
+                        sizes="320px"
+                        alt=${ev.name} loading="lazy" />`
+                    : html`<img src=${ev.thumbnailUrl} alt=${ev.name} loading="lazy" />`
                   : html`<span .innerHTML=${this._thumbIcon(ev)}></span>`}
                 ${ev.isHot ? html`<span class="badge-hot">🔥</span>` : ''}
                 ${ev.ticketsDroppingSoon ? html`<span class="badge-dropping">🎟 Dropping Soon</span>` : ''}

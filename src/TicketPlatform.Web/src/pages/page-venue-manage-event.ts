@@ -153,8 +153,13 @@ export class PageVenueManageEvent extends LitElement {
     if (!this.thumbnailFile) return;
     this.loading = true; this.error = ''; this.success = '';
     try {
-      const res = await api.uploadEventThumbnail(this.eventId, this.thumbnailFile);
-      this.ev = { ...this.ev, thumbnailUrl: res?.thumbnailUrl ?? this.thumbnailPreview };
+      const { uploadUrl, cdnImageUrl } = await api.getEventImageUploadUrl(this.eventId);
+      await fetch(uploadUrl, {
+        method: 'PUT',
+        body: this.thumbnailFile,
+        headers: { 'Content-Type': 'image/jpeg' },
+      });
+      this.ev = { ...this.ev, thumbnailUrl: cdnImageUrl ?? this.thumbnailPreview };
       this.thumbnailFile = null;
       this.success = 'Thumbnail uploaded.';
     } catch (err: any) { this.error = `Thumbnail upload failed: ${err.message}`; }

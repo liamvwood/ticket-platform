@@ -17,6 +17,7 @@ export interface Event {
   startsAt: string;
   endsAt?: string;
   thumbnailUrl?: string;
+  cdnImageBase?: string;
   slug?: string;
   recurringRule?: string;
   isHot: boolean;
@@ -107,6 +108,9 @@ export const api = {
     form.append('file', file);
     return requestRaw(`/events/${eventId}/thumbnail`, { method: 'POST', body: form });
   },
+  getEventImageUploadUrl: (eventId: string) =>
+    request<{ uploadUrl: string; imageId: string; cdnImageUrl: string | null; expiresInSeconds: number }>(
+      `/events/${eventId}/image-upload-url`, { method: 'POST' }),
   createEvent: (data: any) =>
     request<any>('/events', { method: 'POST', body: JSON.stringify(data) }),
   publishEvent: (id: string) =>
