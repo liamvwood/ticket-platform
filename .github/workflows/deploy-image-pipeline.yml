@@ -71,6 +71,8 @@ jobs:
       - name: Embed bucket config into Lambda package
         run: |
           ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          # Fix Terraform S3 backend config (replace <ACCOUNT_ID> placeholder)
+          sed -i "s/<ACCOUNT_ID>/${ACCOUNT_ID}/g" ${{ env.TF_DIR }}/environments/test-backend.tfvars
           BUCKET_NAME="ticket-platform-test-images-${ACCOUNT_ID}"
           cat > ${{ env.LAMBDA_DIR }}/config.js << EOF
           'use strict';
@@ -106,6 +108,15 @@ jobs:
         if: steps.plan.outcome == 'success' || steps.plan.outputs.exitcode == '2'
         run: |
           terraform apply -input=false tfplan-test
+
+      - name: Wait for CloudFront and Lambda@Edge propagation
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          CF_ID=$(terraform output -raw cloudfront_distribution_id)
+          echo "Waiting for CloudFront distribution $CF_ID to reach Deployed status..."
+          aws cloudfront wait distribution-deployed --id "$CF_ID"
+          echo "✅ CloudFront deployed. Waiting 5 minutes for Lambda@Edge edge propagation..."
+          sleep 300
 
       - name: Export outputs to SSM (test)
         working-directory: ${{ env.TF_DIR }}
