@@ -228,7 +228,7 @@ export class PageEvents extends LitElement {
       });
       if (result.items?.length > 0) {
         this._events = result.items;
-        this._total = result.total;
+        this._total = result.totalCount;
         this._page = result.page;
         this._isDemo = false;
       } else if (!this._typeFilter && !this._dateFilter && !this._hotFilter && !this._dropFilter && this._tab === 'upcoming') {

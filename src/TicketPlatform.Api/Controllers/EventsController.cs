@@ -81,8 +81,8 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
             query = query.Where(e => e.SaleStartsAt > now && e.SaleStartsAt <= now.AddHours(24));
 
         var orderedQuery = tab == "past"
-            ? query.OrderByDescending(e => e.StartsAt)
-            : query.OrderBy(e => e.StartsAt);
+            ? query.OrderByDescending(e => e.StartsAt).ThenByDescending(e => e.CreatedAt)
+            : query.OrderBy(e => e.StartsAt).ThenByDescending(e => e.CreatedAt);
 
         var totalCount = await query.CountAsync();
         var items = await orderedQuery
