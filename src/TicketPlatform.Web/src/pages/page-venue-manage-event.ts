@@ -22,11 +22,11 @@ export class PageVenueManageEvent extends LitElement {
     .field select option { background: #0B0F14; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
     @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
-    .btn { background: #00FF88; color: #0B0F14; border: none; border-radius: 8px; padding: .75rem 1.5rem; font-weight: 700; cursor: pointer; font-size: .9rem; }
-    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn { background: #00FF88; color: #0B0F14; border: none; border-radius: 8px; padding: .75rem 1.5rem; font-weight: 700; cursor: pointer; font-size: .9rem; font-family: inherit; transition: background 0.2s; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
     .btn-secondary { background: #1e2836; color: #F5F5F5; border: 1px solid #2e3a4a; }
     .btn-danger { background: #dc2626; color: #fff; }
-    .btn-ghost { background: transparent; color: #00FF88; border: 1px solid #00FF88; border-radius: 8px; padding: .65rem 1.2rem; cursor: pointer; font-size: .85rem; }
+    .btn-ghost { background: transparent; color: #00FF88; border: 1px solid #00FF88; border-radius: 8px; padding: .65rem 1.2rem; cursor: pointer; font-size: .85rem; font-family: inherit; }
     .error { background: #2d0a0a; border: 1px solid #dc2626; border-radius: 8px; padding: .75rem 1rem; margin-bottom: 1rem; color: #f87171; font-size: .9rem; }
     .success { background: #0a2d12; border: 1px solid #00FF88; border-radius: 8px; padding: .75rem 1rem; margin-bottom: 1rem; color: #00FF88; font-size: .9rem; }
     .status-badge { display: inline-block; padding: .25rem .75rem; border-radius: 999px; font-size: .75rem; font-weight: 700; }

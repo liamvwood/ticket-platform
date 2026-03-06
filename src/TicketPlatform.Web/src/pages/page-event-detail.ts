@@ -104,13 +104,14 @@ export class PageEventDetail extends LitElement {
     }
     /* Modal overlay */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.75);
-      display: flex; align-items: center; justify-content: center; z-index: 100;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
       padding: 1rem;
     }
     .modal {
       background: #12121c; border: 1px solid #1e2836; border-radius: 16px;
       padding: 2rem; width: 100%; max-width: 420px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,255,136,0.05);
     }
     .modal h3 { font-size: 1.4rem; font-weight: 800; margin-bottom: 0.5rem; }
     .modal p { color: #6b7a8d; font-size: 0.9rem; margin-bottom: 1.5rem; }
@@ -205,6 +206,7 @@ export class PageEventDetail extends LitElement {
     super.connectedCallback();
     this.referralCode = new URLSearchParams(window.location.search).get('ref');
     this._load();
+    document.addEventListener('keydown', this._onKeyDown);
   }
 
   private async _load() {
@@ -338,6 +340,40 @@ export class PageEventDetail extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     clearInterval(this._countdownInterval);
+    document.removeEventListener('keydown', this._onKeyDown);
+  }
+
+  private _onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && this.showModal) {
+      this.showModal = false;
+    }
+  };
+
+  override updated(changed: Map<string, unknown>) {
+    super.updated(changed);
+    if (changed.has('showModal') && this.showModal && this.otpStep === 'phone') {
+      this.updateComplete.then(() => {
+        const input = this.shadowRoot?.querySelector<HTMLInputElement>('input[type="tel"]');
+        input?.focus();
+      });
+    }
+    if (changed.has('otpStep') && this.otpStep === 'code') {
+      this.updateComplete.then(() => {
+        const input = this.shadowRoot?.querySelector<HTMLInputElement>('input[type="text"]');
+        input?.focus();
+      });
+    }
+  }
+
+  private _getCurrentUserId(): string | null {
+    try {
+      const token = localStorage.getItem('jwt');
+      if (!token) return null;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
+        ?? payload.sub
+        ?? null;
+    } catch { return null; }
   }
 
   render() {
@@ -359,6 +395,10 @@ export class PageEventDetail extends LitElement {
       ? new Date(ev.endsAt) < new Date()
       : new Date(ev.startsAt) < new Date();
     const isLocked = ev.isCancelled || hasEnded;
+
+    const userId = this._getCurrentUserId();
+    const isAdmin = auth.role === 'AppOwner' ||
+      (auth.role === 'VenueAdmin' && !!userId && ev.venue?.ownerId === userId);
 
     return html`
       <div class="back" @click=${() => navigate('/events')}>← Back to Events</div>
@@ -388,13 +428,18 @@ export class PageEventDetail extends LitElement {
               <span>📅 ${new Date(ev.startsAt).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</span>
             </div>
           </div>
-          <button class="btn-ghost" @click=${this._share}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-            Share
-          </button>
+          <div style="display:flex;gap:0.5rem;flex-shrink:0;align-items:flex-start">
+            ${isAdmin ? html`
+              <button class="btn-ghost" @click=${() => navigate('/venue/events/' + this.eventId)}>⚙ Manage</button>
+            ` : ''}
+            <button class="btn-ghost" @click=${this._share}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              Share
+            </button>
+          </div>
         </div>
         <div class="desc">
           ${ev.description?.split('\n').filter(Boolean).map((para: string, i: number) => html`
@@ -529,6 +574,14 @@ export class PageEventDetail extends LitElement {
     return html`
       <div class="modal-overlay" @click=${(e: Event) => { if (e.target === e.currentTarget) this.showModal = false; }}>
         <div class="modal">
+          <div style="display:flex;gap:0.5rem;margin-bottom:1.25rem;justify-content:center">
+            <div style="padding:0.3rem 0.75rem;border-radius:999px;font-size:0.75rem;font-weight:700;${this.otpStep === 'phone' ? 'background:#0d1a15;color:#00FF88;border:1px solid #00FF8855' : 'background:#1e2836;color:#6b7a8d'}">
+              1 · Phone
+            </div>
+            <div style="padding:0.3rem 0.75rem;border-radius:999px;font-size:0.75rem;font-weight:700;${this.otpStep === 'code' ? 'background:#0d1a15;color:#00FF88;border:1px solid #00FF8855' : 'background:#1e2836;color:#6b7a8d'}">
+              2 · Code
+            </div>
+          </div>
           ${this.otpStep === 'phone' ? html`
             <h3>Get your tickets</h3>
             <p>Sign in or continue as a guest with your phone number — no account needed.</p>

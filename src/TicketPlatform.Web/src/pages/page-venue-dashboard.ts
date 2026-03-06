@@ -27,6 +27,13 @@ export class PageVenueDashboard extends LitElement {
     .stat-val.orange { color: #f59e0b; }
     .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
     .section-header h2 { font-size: 1.3rem; font-weight: 700; }
+    .search-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+    .search-input {
+      flex: 1; background: #111820; border: 1px solid #1e2836; color: #F5F5F5;
+      border-radius: 8px; padding: 0.55rem 1rem; font-size: 0.9rem; font-family: inherit;
+      max-width: 320px;
+    }
+    .search-input:focus { outline: none; border-color: #00FF88; }
     .btn {
       background: #00FF88;
       color: #0b0f14;
@@ -110,10 +117,60 @@ export class PageVenueDashboard extends LitElement {
       font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
       text-transform: uppercase; margin-left: 0.5rem; vertical-align: middle;
     }
+    .bulk-bar {
+      display: flex; align-items: center; gap: 1rem;
+      background: #1a2435; border: 1px solid #00FF8833;
+      border-radius: 10px; padding: 0.65rem 1rem;
+      margin-bottom: 0.75rem; font-size: 0.9rem;
+    }
+    .bulk-bar-count { color: #00FF88; font-weight: 700; flex: 1; }
+    .btn-bulk { 
+      background: #111820; border: 1px solid #1e2836; color: #ccc;
+      padding: 0.4rem 0.9rem; border-radius: 6px; font-size: 0.85rem;
+      cursor: pointer; font-family: inherit; font-weight: 600;
+      transition: all 0.15s;
+    }
+    .btn-bulk:hover:not(:disabled) { border-color: #00FF88; color: #00FF88; }
+    .btn-bulk.danger:hover:not(:disabled) { border-color: #f87171; color: #f87171; }
+    .btn-bulk:disabled { opacity: 0.4; cursor: not-allowed; }
+    input[type=checkbox] { accent-color: #00FF88; cursor: pointer; width: 15px; height: 15px; }
+    .kebab-wrap { position: relative; display: inline-block; }
+    .kebab-btn {
+      background: transparent; border: 1px solid #1e2836;
+      color: #888; border-radius: 6px;
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1.1rem; line-height: 1;
+      font-family: inherit; transition: border-color 0.15s, color 0.15s;
+    }
+    .kebab-btn:hover { border-color: #666; color: #fff; }
+    .kebab-menu {
+      position: absolute; right: 0; top: calc(100% + 4px);
+      background: #1e1e2e; border: 1px solid #1e2836; border-radius: 8px;
+      min-width: 140px; z-index: 50; overflow: hidden;
+      box-shadow: 0 8px 24px #0008;
+    }
+    .kebab-item {
+      display: block; width: 100%; text-align: left;
+      background: none; border: none; color: #ccc;
+      padding: 0.6rem 1rem; font-size: 0.87rem; font-family: inherit;
+      cursor: pointer; transition: background 0.1s;
+    }
+    .kebab-item:hover { background: #1e2836; color: #fff; }
     @media (max-width: 640px) {
       :host { padding: 1rem; }
       h1 { font-size: 1.4rem; }
-      table { font-size: 0.82rem; }
+      .stats { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+      .stat-card { padding: 1rem; }
+      .stat-val { font-size: 1.5rem; }
+      .section-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+      .section-header > div { width: 100%; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+      .section-header > div .btn, .section-header > div .btn-ghost { flex: 1; text-align: center; }
+      .search-row { flex-direction: column; }
+      .search-input { max-width: 100%; width: 100%; box-sizing: border-box; }
+      .bulk-bar { flex-wrap: wrap; gap: 0.5rem; }
+      .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
+      table { font-size: 0.82rem; min-width: 520px; }
       th, td { padding: 0.5rem 0.4rem; }
     }
   `;
@@ -125,20 +182,41 @@ export class PageVenueDashboard extends LitElement {
   @state() totalPages = 1;
   @state() shareEvent: any = null;
   @state() copiedLink = false;
+  @state() selectedIds: Set<string> = new Set();
+  @state() bulkBusy = false;
+  @state() openKebab: string | null = null;
+  @state() searchQuery = '';
+  private _searchTimeout?: ReturnType<typeof setTimeout>;
+
+  private _onSearch(e: Event) {
+    const val = (e.target as HTMLInputElement).value;
+    this.searchQuery = val;
+    clearTimeout(this._searchTimeout);
+    this._searchTimeout = setTimeout(() => this._loadPage(1), 300);
+  }
+
+  private _closeKebab = () => { this.openKebab = null; };
 
   async connectedCallback() {
     super.connectedCallback();
     this.isOwner = getUserRole() === 'AppOwner';
+    document.addEventListener('click', this._closeKebab);
     await this._loadPage(1);
   }
 
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('click', this._closeKebab);
+  }
+
   private async _loadPage(page: number) {
+    this.selectedIds = new Set();
     this.loading = true;
     try {
       const t0 = performance.now();
       const result = this.isOwner
-        ? await api.getEventsAdmin(page, 20)
-        : await api.getEvents({ page, pageSize: 20 });
+        ? await api.getEventsAdmin(page, 20, this.searchQuery || undefined)
+        : await api.getEvents({ page, pageSize: 20, search: this.searchQuery || undefined });
       const elapsed = performance.now() - t0;
       console.info(`[perf] venue-dashboard load: ${elapsed.toFixed(0)}ms`);
       if (result?.items) {
@@ -159,6 +237,32 @@ export class PageVenueDashboard extends LitElement {
   private _openShare(ev: any) { this.shareEvent = ev; this.copiedLink = false; }
   private _closeShare() { this.shareEvent = null; }
   private _eventUrl(ev: any) { return window.location.origin + '/events/' + (ev.slug ?? ev.id); }
+
+  private _toggleSelect(id: string) {
+    const s = new Set(this.selectedIds);
+    if (s.has(id)) s.delete(id); else s.add(id);
+    this.selectedIds = s;
+  }
+
+  private _selectAll(checked: boolean) {
+    this.selectedIds = checked ? new Set(this.events.map(e => e.id)) : new Set();
+  }
+
+  private async _bulkPublish(publish: boolean) {
+    if (this.selectedIds.size === 0) return;
+    this.bulkBusy = true;
+    try {
+      await Promise.all([...this.selectedIds].map(id =>
+        publish ? api.publishEvent(id) : api.unpublishEvent(id)
+      ));
+      this.selectedIds = new Set();
+      await this._loadPage(this.page);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      this.bulkBusy = false;
+    }
+  }
   private async _copyLink(url: string) {
     await navigator.clipboard.writeText(url);
     this.copiedLink = true;
@@ -247,9 +351,32 @@ export class PageVenueDashboard extends LitElement {
         </div>
       </div>
 
+      <div class="search-row">
+        <input class="search-input" type="search" placeholder="Search events…"
+          .value=${this.searchQuery}
+          @input=${this._onSearch} />
+      </div>
+
+      ${this.selectedIds.size > 0 ? html`
+        <div class="bulk-bar">
+          <span class="bulk-bar-count">${this.selectedIds.size} event${this.selectedIds.size === 1 ? '' : 's'} selected</span>
+          <button class="btn-bulk" ?disabled=${this.bulkBusy} @click=${() => this._bulkPublish(true)}>
+            ${this.bulkBusy ? 'Working…' : '✓ Publish'}
+          </button>
+          <button class="btn-bulk" ?disabled=${this.bulkBusy} @click=${() => this._bulkPublish(false)}>
+            ${this.bulkBusy ? 'Working…' : 'Unpublish'}
+          </button>
+          <button class="btn-bulk" @click=${() => { this.selectedIds = new Set(); }}>Clear</button>
+        </div>
+      ` : ''}
+
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
+            <th><input type="checkbox" 
+              .checked=${this.selectedIds.size === this.events.length && this.events.length > 0}
+              @change=${(e: any) => this._selectAll(e.target.checked)} /></th>
             <th>Event</th>
             ${this.isOwner ? html`<th>Venue</th>` : ''}
             <th>Date</th>
@@ -261,7 +388,7 @@ export class PageVenueDashboard extends LitElement {
         </thead>
         <tbody>
           ${this.events.length === 0
-            ? html`<tr class="empty-row"><td colspan="${this.isOwner ? 7 : 6}">No events yet — create one to get started.</td></tr>`
+            ? html`<tr class="empty-row"><td colspan="${this.isOwner ? 8 : 7}">No events yet — create one to get started.</td></tr>`
             : this.events.map(ev => {
                 const tTypes = ev.ticketTypes ?? [];
                 const evSold = tTypes.reduce((s: number, tt: any) => s + tt.quantitySold, 0);
@@ -270,6 +397,9 @@ export class PageVenueDashboard extends LitElement {
                 const pct = evTotal ? Math.round(evSold / evTotal * 100) : 0;
                 return html`
                   <tr>
+                    <td><input type="checkbox" 
+                      .checked=${this.selectedIds.has(ev.id)}
+                      @change=${() => this._toggleSelect(ev.id)} /></td>
                     <td>
                       <strong>${ev.name}</strong>
                       ${ev.recurringRule ? html`<span class="recurring-badge">↻ ${ev.recurringRule.charAt(0) + ev.recurringRule.slice(1).toLowerCase()}</span>` : ''}
@@ -294,11 +424,18 @@ export class PageVenueDashboard extends LitElement {
                         </div>
                       ` : ''}
                     </td>
-                    <td style="display:flex;gap:.5rem;align-items:center">
-                      <button class="btn-ghost" @click=${() => this._openShare(ev)} title="Share">📤</button>
-                      ${ev.isCancelled
-                        ? html`<span style="font-size:0.8rem;color:#6b7a8d">Cancelled</span>`
-                        : html`<button class="btn-ghost" @click=${() => navigate(`/venue/events/${ev.id}`)}>Manage</button>`}
+                    <td>
+                      <div class="kebab-wrap" @click=${(e: Event) => e.stopPropagation()}>
+                        <button class="kebab-btn" @click=${() => this.openKebab = this.openKebab === ev.id ? null : ev.id}>⋮</button>
+                        ${this.openKebab === ev.id ? html`
+                          <div class="kebab-menu">
+                            <button class="kebab-item" @click=${() => { this._openShare(ev); this.openKebab = null; }}>📤 Share</button>
+                            ${!ev.isCancelled ? html`
+                              <button class="kebab-item" @click=${() => { navigate('/venue/events/' + ev.id); this.openKebab = null; }}>⚙ Manage</button>
+                            ` : ''}
+                          </div>
+                        ` : ''}
+                      </div>
                     </td>
                   </tr>
                 `;
@@ -306,6 +443,7 @@ export class PageVenueDashboard extends LitElement {
           }
         </tbody>
       </table>
+      </div>
       ${this.totalPages > 1 ? html`
         <div class="pagination">
           <button class="page-btn" ?disabled=${this.page <= 1} @click=${() => this._loadPage(this.page - 1)}>‹</button>

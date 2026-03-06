@@ -8,6 +8,7 @@ export interface EventFilters {
   dropping?: boolean;
   page?: number;
   pageSize?: number;
+  search?: string;
 }
 
 export interface Event {
@@ -95,11 +96,12 @@ export const api = {
     if (filters?.dropping) p.set('dropping', 'true');
     if (filters?.page) p.set('page', String(filters.page));
     if (filters?.pageSize) p.set('pageSize', String(filters.pageSize));
+    if (filters?.search) p.set('search', filters.search);
     const qs = p.toString();
     return request<{ items: Event[]; total: number; page: number; pageSize: number }>(`/events${qs ? '?' + qs : ''}`);
   },
   getEventTypes: () => request<string[]>('/events/types'),
-  getEventsAdmin: (page = 1, pageSize = 20) => request<any>(`/events/admin?page=${page}&pageSize=${pageSize}`),
+  getEventsAdmin: (page = 1, pageSize = 20, search?: string) => request<any>(`/events/admin?page=${page}&pageSize=${pageSize}${search ? '&search=' + encodeURIComponent(search) : ''}`),
   updateEvent: (id: string, data: { name?: string; description?: string; startsAt?: string; endsAt?: string; eventType?: string }) =>
     request<any>(`/events/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   getEvent: (id: string) => request<any>(`/events/${id}`),

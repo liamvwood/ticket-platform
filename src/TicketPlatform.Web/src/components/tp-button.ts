@@ -19,13 +19,13 @@ export class TpButton extends LitElement {
       transition: all 0.2s;
       width: var(--btn-width, auto);
     }
-    .primary { background: #00FF88; color: #fff; }
+    .primary { background: #00FF88; color: #0b0f14; }
     .primary:hover:not(:disabled) { background: #00d474; transform: translateY(-1px); }
     .secondary { background: transparent; border: 1px solid #1e2836; color: #ccc; }
     .secondary:hover:not(:disabled) { border-color: #555; color: #fff; }
     .danger { background: #ef4444; color: #fff; }
     .danger:hover:not(:disabled) { background: #dc2626; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
   `;
 
   @property() variant: 'primary' | 'secondary' | 'danger' = 'primary';

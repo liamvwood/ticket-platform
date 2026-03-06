@@ -94,9 +94,9 @@ export class PageVenueNewEvent extends LitElement {
   @state() eventType = 'other';
 
   // Ticket type fields
-  @state() ttName = 'General Admission';
-  @state() ttPrice = '25.00';
-  @state() ttQty = '200';
+  @state() ttName = '';
+  @state() ttPrice = '';
+  @state() ttQty = '';
   @state() ttMax = '4';
   @state() editingTtId = ''; // when set, "Add" becomes "Update"
 
@@ -146,9 +146,23 @@ export class PageVenueNewEvent extends LitElement {
         eventType: this.eventType,
       });
       this.createdEventId = ev.id;
+      await this._createDefaultTicketType(ev.id);
       this.step = 'tickets';
     } catch (err: any) { this.error = err.message; }
     finally { this.loading = false; }
+  }
+
+  private async _createDefaultTicketType(eventId: string) {
+    try {
+      const tt = await api.createTicketType(eventId, {
+        name: 'General Admission',
+        price: 25.00,
+        totalQuantity: 200,
+        maxPerOrder: 4,
+      });
+      this.ticketTypes = [tt];
+      this.ttAdded = 1;
+    } catch {} // silently fail — user can add manually
   }
 
   private async _addTicketType(e: Event) {
@@ -167,7 +181,7 @@ export class PageVenueNewEvent extends LitElement {
       this.ticketTypes = [...this.ticketTypes, tt];
       this.ttAdded = this.ticketTypes.length;
       this.editingTtId = '';
-      this.ttName = 'General Admission'; this.ttPrice = ''; this.ttQty = ''; this.ttMax = '4';
+      this.ttName = ''; this.ttPrice = ''; this.ttQty = ''; this.ttMax = '4';
     } catch (err: any) { this.error = err.message; }
     finally { this.loading = false; }
   }
@@ -383,12 +397,12 @@ export class PageVenueNewEvent extends LitElement {
               ${this.loading ? (this.editingTtId ? 'Updating…' : 'Adding…') : (this.editingTtId ? '✓ Update Ticket Type' : '+ Add Ticket Type')}
             </button>
             ${this.editingTtId ? html`
-              <button class="btn-ghost" type="button" @click=${() => { this.editingTtId = ''; this.ttName = 'General Admission'; this.ttPrice = ''; this.ttQty = ''; this.ttMax = '4'; }}>
+              <button class="btn-ghost" type="button" @click=${() => { this.editingTtId = ''; this.ttName = ''; this.ttPrice = ''; this.ttQty = ''; this.ttMax = '4'; }}>
                 Cancel Edit
               </button>
             ` : ''}
             ${this.ticketTypes.length > 0 && !this.editingTtId ? html`
-              <button class="btn" type="button" style="background:#22c55e" ?disabled=${this.loading} @click=${this._publish}>
+              <button class="btn" type="button" ?disabled=${this.loading} @click=${this._publish}>
                 ${this.loading ? '…' : '✓ Publish Event'}
               </button>
             ` : ''}

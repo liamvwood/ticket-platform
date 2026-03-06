@@ -17,7 +17,7 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
     private const int DefaultPageSize = 12;
     private const int MaxPageSize = 100;
 
-    // GET /events?page=1&pageSize=12&type=comedy&date=today&hot=true&tab=past
+    // GET /events?page=1&pageSize=12&type=comedy&date=today&hot=true&tab=past&search=jazz
     [HttpGet]
     public async Task<ActionResult<EventsPagedResult>> GetAll(
         [FromQuery] int page = 1,
@@ -26,7 +26,8 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         [FromQuery] string? date = null,
         [FromQuery] bool? hot = null,
         [FromQuery] bool? dropping = null,
-        [FromQuery] string? tab = null)
+        [FromQuery] string? tab = null,
+        [FromQuery] string? search = null)
     {
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
         page = Math.Max(1, page);
@@ -38,6 +39,9 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
             .Include(e => e.Venue)
             .Include(e => e.TicketTypes)
             .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(e => e.Name.ToLower().Contains(search.ToLower()));
 
         // Tab filter: past vs upcoming (default)
         if (tab == "past")
@@ -109,7 +113,8 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
     [Authorize(Roles = "AppOwner")]
     public async Task<ActionResult<EventsPagedResult>> GetAllAdmin(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = DefaultPageSize)
+        [FromQuery] int pageSize = DefaultPageSize,
+        [FromQuery] string? search = null)
     {
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
         page = Math.Max(1, page);
@@ -118,12 +123,17 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         var twoHoursAgo = now.AddHours(-2);
         var hotEventIds = await GetHotEventIdsAsync(twoHoursAgo);
 
-        var query = db.Events
+        var filteredQuery = db.Events
             .Include(e => e.Venue)
             .Include(e => e.TicketTypes)
-            .OrderByDescending(e => e.CreatedAt);
+            .AsQueryable();
 
-        var totalCount = await query.CountAsync();
+        if (!string.IsNullOrWhiteSpace(search))
+            filteredQuery = filteredQuery.Where(e => e.Name.ToLower().Contains(search.ToLower()));
+
+        var query = filteredQuery.OrderByDescending(e => e.CreatedAt);
+
+        var totalCount = await filteredQuery.CountAsync();
         var items = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
