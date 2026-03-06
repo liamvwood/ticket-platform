@@ -125,3 +125,48 @@ jobs:
           echo "✅ CDN domain: $CDN_DOMAIN"
           echo "✅ Image bucket: $IMAGE_BUCKET"
 
+  # ─────────────────────────────────────────────────────────────
+  # 3. INTEGRATION TESTS (run against deployed test infra)
+  # ─────────────────────────────────────────────────────────────
+  test-integration:
+    name: Integration Tests – Test
+    runs-on: ubuntu-latest
+    needs: deploy-test
+    environment: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (host platform)
+        working-directory: ${{ env.LAMBDA_DIR }}
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Fetch deployed config from SSM
+        id: ssm
+        run: |
+          CDN_DOMAIN=$(aws ssm get-parameter --name "/ticket-platform/test/image-cdn-domain" --query "Parameter.Value" --output text)
+          IMAGE_BUCKET=$(aws ssm get-parameter --name "/ticket-platform/test/image-pipeline-bucket" --query "Parameter.Value" --output text)
+          echo "cdn_domain=$CDN_DOMAIN" >> $GITHUB_OUTPUT
+          echo "image_bucket=$IMAGE_BUCKET" >> $GITHUB_OUTPUT
+
+      - name: Run integration tests
+        working-directory: ${{ env.LAMBDA_DIR }}
+        env:
+          CDN_DOMAIN: ${{ steps.ssm.outputs.cdn_domain }}
+          IMAGE_BUCKET: ${{ steps.ssm.outputs.image_bucket }}
+          BUCKET_REGION: ${{ env.AWS_REGION }}
+        run: npm run test:integration
+
