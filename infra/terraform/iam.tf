@@ -50,3 +50,31 @@ resource "aws_iam_role_policy" "lambda_edge_s3_read" {
     ]
   })
 }
+
+# Allow the API service role (EKS node role or IRSA) to PUT originals for presigned uploads.
+# When api_iam_role_name is set, attach an inline policy granting s3:PutObject.
+data "aws_iam_role" "api_service" {
+  count = var.api_iam_role_name != "" ? 1 : 0
+  name  = var.api_iam_role_name
+}
+
+resource "aws_iam_role_policy" "api_image_bucket_write" {
+  count = var.api_iam_role_name != "" ? 1 : 0
+  name  = "ticket-platform-${var.environment}-image-bucket-write"
+  role  = data.aws_iam_role.api_service[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AllowPresignedPut"
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"]
+        Resource = [
+          aws_s3_bucket.images_original.arn,
+          "${aws_s3_bucket.images_original.arn}/originals/*"
+        ]
+      }
+    ]
+  })
+}

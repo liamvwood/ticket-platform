@@ -14,3 +14,9 @@ variable "image_bucket_cors_origins" {
   type        = list(string)
   default     = ["*"]
 }
+
+variable "api_iam_role_name" {
+  description = "IAM role name used by the API service (EKS node role or IRSA role) that needs s3:PutObject on the image bucket for presigned URL uploads"
+  type        = string
+  default     = ""
+}
