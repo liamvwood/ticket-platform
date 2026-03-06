@@ -129,6 +129,48 @@ jobs:
             -backend-config=environments/test-backend.tfvars \
             -reconfigure
 
+
+      - name: Import existing resources into Terraform state
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ENV="test"
+          TFVARS="-var-file=environments/${ENV}.tfvars"
+
+          tf_import() {
+            local resource="$1" id="$2" label="$3"
+            if terraform state show "$resource" &>/dev/null; then
+              echo "  already in state: $label"
+              return
+            fi
+            echo "  importing $label ($id)..."
+            terraform import $TFVARS -input=false "$resource" "$id" && \
+              echo "  imported: $label" || echo "  not found in AWS, will be created: $label"
+          }
+
+          tf_import aws_iam_role.lambda_edge_image \
+            "ticket-platform-${ENV}-lambda-edge-image" "IAM role"
+
+          tf_import aws_lambda_function.image_transformer \
+            "ticket-platform-${ENV}-image-transformer" "Lambda function"
+
+          BUCKET="ticket-platform-${ENV}-images-${ACCOUNT_ID}"
+          tf_import aws_s3_bucket.images_original "$BUCKET" "S3 bucket"
+
+          OAC_ID=$(aws cloudfront list-origin-access-controls \
+            --query "OriginAccessControlList.Items[?Name=='ticket-platform-${ENV}-images-oac'].Id | [0]" \
+            --output text 2>/dev/null)
+          if [ -n "$OAC_ID" ] && [ "$OAC_ID" != "None" ]; then
+            tf_import aws_cloudfront_origin_access_control.images "$OAC_ID" "OAC"
+          fi
+
+          CF_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Comment=='ticket-platform-${ENV} image CDN'].Id | [0]" \
+            --output text 2>/dev/null)
+          if [ -n "$CF_ID" ] && [ "$CF_ID" != "None" ]; then
+            tf_import aws_cloudfront_distribution.images "$CF_ID" "CloudFront distribution"
+          fi
+
       - name: Terraform Plan (test)
         working-directory: ${{ env.TF_DIR }}
         run: |
