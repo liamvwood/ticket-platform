@@ -459,7 +459,9 @@ public class EventsController(AppDbContext db, AppMetrics metrics, IStorageServi
         Slug: e.Slug,
         Description: e.Description,
         ThumbnailUrl: e.ThumbnailUrl,
-        CdnImageBase: !string.IsNullOrWhiteSpace(cdnDomain) && !string.IsNullOrWhiteSpace(e.ThumbnailUrl)
+        CdnImageBase: !string.IsNullOrWhiteSpace(cdnDomain)
+            && e.ThumbnailUrl != null
+            && e.ThumbnailUrl.Contains(cdnDomain)
             ? $"https://{cdnDomain}"
             : null,
         StartsAt: e.StartsAt,
