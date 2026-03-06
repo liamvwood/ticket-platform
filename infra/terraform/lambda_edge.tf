@@ -3,7 +3,7 @@ data "archive_file" "image_transformer" {
   type        = "zip"
   source_dir  = "${path.module}/../image-transformer"
   output_path = "${path.module}/image-transformer.zip"
-  excludes    = ["node_modules", "*.test.js"]
+  excludes    = ["test", "*.test.js"]
 }
 
 # Lambda@Edge functions must be deployed in us-east-1

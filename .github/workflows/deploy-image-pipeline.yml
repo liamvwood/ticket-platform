@@ -31,9 +31,9 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies for Lambda (Linux x64)
+      - name: Install dependencies for Lambda (Linux x64, production only)
         working-directory: infra/image-transformer
-        run: npm ci --platform=linux --arch=x64 --libc=glibc
+        run: npm ci --omit=dev --platform=linux --arch=x64 --libc=glibc
 
       - name: Upload Lambda artifact
         uses: actions/upload-artifact@v4
