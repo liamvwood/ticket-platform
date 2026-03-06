@@ -1,8 +1,3 @@
-import {
-  to = aws_cloudfront_distribution.images
-  id = "E1QGF1Q99ZSDJW"
-}
-
 resource "aws_cloudfront_distribution" "images" {
   enabled         = true
   is_ipv6_enabled = true

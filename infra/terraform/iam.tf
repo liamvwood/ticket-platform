@@ -1,9 +1,4 @@
 # Execution role for the Lambda@Edge image transformer
-import {
-  to = aws_iam_role.lambda_edge_image
-  id = "ticket-platform-${var.environment}-lambda-edge-image"
-}
-
 resource "aws_iam_role" "lambda_edge_image" {
   provider = aws.us_east_1
   name     = "ticket-platform-${var.environment}-lambda-edge-image"
@@ -44,6 +39,13 @@ resource "aws_iam_role_policy" "lambda_edge_s3_read" {
         Effect   = "Allow"
         Action   = ["s3:GetObject"]
         Resource = "${aws_s3_bucket.images_original.arn}/originals/*"
+      },
+      {
+        # s3:ListBucket causes S3 to return 404 (not 403 AccessDenied) for
+        # missing keys, so the Lambda handler can correctly return 404 to clients
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = aws_s3_bucket.images_original.arn
       }
     ]
   })

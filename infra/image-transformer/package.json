@@ -16,6 +16,7 @@
   },
   "scripts": {
     "install:lambda": "npm ci --omit=dev --platform=linux --arch=x64",
+    "test:unit": "jest test/handler.unit --testTimeout=30000",
     "test:integration": "jest test/integration --testTimeout=60000 --forceExit"
   },
   "jest": {

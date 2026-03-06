@@ -1,9 +1,4 @@
 # Bucket holding original uploaded images
-import {
-  to = aws_s3_bucket.images_original
-  id = "ticket-platform-${var.environment}-images-${data.aws_caller_identity.current.account_id}"
-}
-
 resource "aws_s3_bucket" "images_original" {
   bucket = "ticket-platform-${var.environment}-images-${data.aws_caller_identity.current.account_id}"
 }
@@ -45,11 +40,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "images_original" {
 }
 
 # OAC — Origin Access Control for CloudFront → S3 (modern replacement for OAI)
-import {
-  to = aws_cloudfront_origin_access_control.images
-  id = "ECDWSRU6009QJ"
-}
-
 resource "aws_cloudfront_origin_access_control" "images" {
   name                              = "ticket-platform-${var.environment}-images-oac"
   description                       = "OAC for image originals bucket"

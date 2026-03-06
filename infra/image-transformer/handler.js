@@ -66,7 +66,7 @@ exports.handler = async (event) => {
   } catch (err) {
     console.error('Image transform error:', err);
 
-    if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+    if (err.name === 'NoSuchKey' || err.name === 'AccessDenied' || err.$metadata?.httpStatusCode === 404 || err.$metadata?.httpStatusCode === 403) {
       return {
         status: '404',
         statusDescription: 'Not Found',
