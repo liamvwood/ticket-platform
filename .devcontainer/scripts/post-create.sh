@@ -15,6 +15,9 @@ step() {
 }
 
 # Independent installs
+step ".NET 10 SDK"          bash -c 'sudo apt-get update -qq && sudo apt-get install -y dotnet-sdk-10.0'
+step "dotnet-ef tool"       bash -c 'dotnet tool install --global dotnet-ef 2>/dev/null || dotnet tool update --global dotnet-ef'
+step "jq"                   bash -c 'sudo apt-get install -y jq'
 step "aws-cdk"              npm install -g aws-cdk
 step "gh-copilot extension" bash -c 'gh extension install github/gh-copilot 2>/dev/null || gh extension upgrade github/gh-copilot'
 

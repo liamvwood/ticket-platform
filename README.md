@@ -356,38 +356,51 @@ terraform apply -var-file=environments/test.tfvars
 ## 🏁 Getting Started
 
 ### Prerequisites
-- Docker + Docker Compose
 - .NET 10 SDK
 - Node.js 20+
+- `jq` (for seeding users: `sudo apt-get install -y jq`)
+- Docker + Docker Compose _(recommended — see devcontainer note below)_
+
+### Devcontainer (Codespaces / VS Code)
+
+The repo ships a fully configured devcontainer. It includes the
+[Docker-in-Docker](https://github.com/devcontainers/features/tree/main/src/docker-in-docker)
+feature so `docker compose` works out of the box. Open the repo in a Codespace
+or run **Dev Containers: Rebuild Container** in VS Code and all tooling is
+installed automatically.
+
+> If Docker is unavailable (e.g. a restricted host), `scripts/dev.sh` falls
+> back to a native PostgreSQL cluster automatically.
 
 ### Local Development
 
+The `dev.sh` script handles everything in one command:
+
 ```bash
-# 1. Start database + API
-docker compose up -d
+# Start the full stack (API + frontend + DB + seeds)
+./scripts/dev.sh
 
-# 2. Apply migrations
-cd src/TicketPlatform.Api
-dotnet ef database update --project ../TicketPlatform.Infrastructure
+# Start the stack and then run all 68 E2E tests
+./scripts/dev.sh --test
 
-# 3. Seed test venue (required for E2E)
-psql postgresql://postgres:postgres@localhost:5432/ticketplatform -c "
-INSERT INTO \"Venues\" (\"Id\",\"Name\",\"Address\",\"ContactEmail\",\"CreatedAt\")
-VALUES ('a0000000-0000-0000-0000-000000000001',
-        'Stubb''s Waller Creek','801 Red River St','hello@stubbs.com',now())
-ON CONFLICT DO NOTHING;"
-
-# 4. Start frontend
-cd ../TicketPlatform.Web
-npm install
-npm run dev
+# Stop background processes
+./scripts/dev.sh --stop
 ```
+
+The script:
+1. Detects whether Docker is available; if so uses `docker compose`, otherwise starts a native Postgres cluster
+2. Applies EF Core migrations
+3. Seeds the test venue (`Stubb's Waller Creek`) and E2E user accounts
+4. Builds and starts the API (`http://localhost:8080`)
+5. Installs npm deps and starts the Vite dev server (`http://localhost:5173`)
 
 | URL | Service |
 |-----|---------|
 | http://localhost:5173 | Frontend |
 | http://localhost:8080 | API |
 | http://localhost:8080/healthz | Health check |
+
+Logs are written to `/tmp/api.log` and `/tmp/frontend.log`.
 
 ### Configuration
 
