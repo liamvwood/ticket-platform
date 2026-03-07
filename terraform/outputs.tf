@@ -1,22 +1,33 @@
-output "cluster_name" {
-  description = "EKS cluster name — use with aws eks update-kubeconfig"
-  value       = module.eks.cluster_name
+output "alb_dns_name" {
+  description = "DNS name of the Application Load Balancer — create CNAME/ALIAS records pointing api_domain and frontend_domain here"
+  value       = aws_lb.this.dns_name
 }
 
-output "cluster_endpoint" {
-  description = "EKS cluster API server endpoint"
-  value       = module.eks.cluster_endpoint
+output "alb_zone_id" {
+  description = "Route 53 canonical hosted zone ID of the ALB (use for ALIAS records)"
+  value       = aws_lb.this.zone_id
 }
 
-output "cluster_certificate_authority_data" {
-  description = "Base64-encoded CA certificate for the EKS cluster"
-  value       = module.eks.cluster_certificate_authority_data
-  sensitive   = true
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = aws_ecs_cluster.this.name
 }
 
-output "kubeconfig_command" {
-  description = "Run this to configure kubectl for this cluster"
-  value       = "aws eks update-kubeconfig --name ${module.eks.cluster_name} --region ${var.aws_region}"
+output "ecs_cluster_arn" {
+  description = "ECS cluster ARN"
+  value       = aws_ecs_cluster.this.arn
+}
+
+output "acm_validation_records" {
+  description = "DNS CNAME records required to validate the ACM certificate. Only populated when route53_zone_id is empty and certificate_arn is not set."
+  value = var.certificate_arn == "" && var.route53_zone_id == "" ? {
+    for dvo in aws_acm_certificate.this[0].domain_validation_options :
+    dvo.domain_name => {
+      name  = dvo.resource_record_name
+      type  = dvo.resource_record_type
+      value = dvo.resource_record_value
+    }
+  } : {}
 }
 
 output "ecr_api_repository_url" {
@@ -55,11 +66,6 @@ output "thumbnail_bucket_url" {
   value       = "https://${aws_s3_bucket.thumbnails.bucket_regional_domain_name}"
 }
 
-output "api_irsa_role_arn" {
-  description = "IAM role ARN annotated on the API ServiceAccount (IRSA)"
-  value       = aws_iam_role.api_irsa.arn
-}
-
 output "ci_access_key_id" {
   description = "IAM access key ID for GitHub Actions CI/CD — set as AWS_ACCESS_KEY_ID secret"
   value       = aws_iam_access_key.ci.id
@@ -72,20 +78,15 @@ output "ci_secret_access_key" {
   sensitive   = true
 }
 
-output "app_namespace" {
-  description = "Kubernetes namespace where the application is deployed"
-  value       = local.app_namespace
-}
-
 output "github_secrets_summary" {
   description = "GitHub Actions secrets to configure after apply (retrieve sensitive values from SSM)"
   value = {
-    AWS_REGION          = var.aws_region
-    AWS_ACCESS_KEY_ID   = "(see ci_access_key_id output)"
+    AWS_REGION            = var.aws_region
+    AWS_ACCESS_KEY_ID     = "(see ci_access_key_id output)"
     AWS_SECRET_ACCESS_KEY = "(see ci_secret_access_key output)"
-    ECR_REGISTRY        = "${local.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com"
-    EKS_CLUSTER_NAME    = module.eks.cluster_name
-    TEST_API_HOST       = var.api_domain
-    TEST_FRONTEND_HOST  = var.frontend_domain
+    ECR_REGISTRY          = "${local.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com"
+    ECS_CLUSTER           = aws_ecs_cluster.this.name
+    TEST_API_HOST         = var.api_domain
+    TEST_FRONTEND_HOST    = var.frontend_domain
   }
 }

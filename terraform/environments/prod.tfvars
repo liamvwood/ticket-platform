@@ -1,11 +1,16 @@
-environment         = "prod"
-aws_region          = "us-east-1"
-cluster_version     = "1.31"
+environment = "prod"
+aws_region  = "us-east-1"
 
-node_instance_types = ["t3.medium"]
-node_min_size       = 2
-node_max_size       = 20
-node_desired_size   = 3
+# ECS Fargate capacity
+api_task_cpu      = 512
+api_task_memory   = 1024
+api_desired_count = 2
+api_max_count     = 20
+
+frontend_task_cpu      = 256
+frontend_task_memory   = 512
+frontend_desired_count = 2
+frontend_max_count     = 10
 
 db_instance_class    = "db.t3.small"
 db_allocated_storage = 100
@@ -16,10 +21,12 @@ enable_nat_gateway = true
 
 api_domain      = "api.slingshot.dev"
 frontend_domain = "app.slingshot.dev"
-grafana_domain  = "grafana.slingshot.dev"
 
-enable_monitoring         = true
+# Set route53_zone_id for automatic ACM DNS validation, or provide an
+# existing certificate_arn. See terraform/acm.tf for details.
+route53_zone_id = ""
+certificate_arn = ""
+
 ecr_image_retention_count = 50
 
 thumbnail_bucket_cors_origin = "https://app.slingshot.dev"
-letsencrypt_email            = "ops@slingshot.dev"

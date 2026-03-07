@@ -48,7 +48,19 @@ resource "aws_ssm_parameter" "db_connection_string" {
   ])
 }
 
-# Stripe — placeholders; update with real keys before going live
+# Thumbnail bucket name — auto-set from the S3 resource
+resource "aws_ssm_parameter" "thumbnail_bucket_name" {
+  name  = "/ticket-platform/${var.environment}/thumbnail-bucket-name"
+  type  = "String"
+  value = aws_s3_bucket.thumbnails.bucket
+}
+
+# Redis connection string — assembled from the ElastiCache cluster endpoint
+resource "aws_ssm_parameter" "redis_connection_string" {
+  name  = "/ticket-platform/${var.environment}/redis-connection-string"
+  type  = "SecureString"
+  value = "${aws_elasticache_cluster.redis.cache_nodes[0].address}:6379"
+}
 resource "aws_ssm_parameter" "stripe_secret_key" {
   name  = "/ticket-platform/${var.environment}/stripe-secret-key"
   type  = "SecureString"

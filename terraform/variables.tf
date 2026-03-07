@@ -9,35 +9,57 @@ variable "environment" {
   type        = string
 }
 
-variable "cluster_version" {
-  description = "Kubernetes version for the EKS cluster"
-  type        = string
-  default     = "1.31"
-}
+# ── ECS Fargate capacity ───────────────────────────────────────────────────────
 
-variable "node_instance_types" {
-  description = "EC2 instance types for the EKS managed node group"
-  type        = list(string)
-  default     = ["t3.small"]
-}
-
-variable "node_min_size" {
-  description = "Minimum number of EKS worker nodes"
+variable "api_task_cpu" {
+  description = "CPU units for the API Fargate task (256 = 0.25 vCPU)"
   type        = number
-  default     = 1
+  default     = 256
 }
 
-variable "node_max_size" {
-  description = "Maximum number of EKS worker nodes"
+variable "api_task_memory" {
+  description = "Memory in MiB for the API Fargate task"
   type        = number
-  default     = 3
+  default     = 512
 }
 
-variable "node_desired_size" {
-  description = "Desired number of EKS worker nodes at launch"
+variable "api_desired_count" {
+  description = "Desired number of running API tasks"
   type        = number
   default     = 2
 }
+
+variable "api_max_count" {
+  description = "Maximum number of API tasks for auto-scaling"
+  type        = number
+  default     = 10
+}
+
+variable "frontend_task_cpu" {
+  description = "CPU units for the frontend Fargate task"
+  type        = number
+  default     = 256
+}
+
+variable "frontend_task_memory" {
+  description = "Memory in MiB for the frontend Fargate task"
+  type        = number
+  default     = 512
+}
+
+variable "frontend_desired_count" {
+  description = "Desired number of running frontend tasks"
+  type        = number
+  default     = 2
+}
+
+variable "frontend_max_count" {
+  description = "Maximum number of frontend tasks for auto-scaling"
+  type        = number
+  default     = 5
+}
+
+# ── RDS ────────────────────────────────────────────────────────────────────────
 
 variable "db_instance_class" {
   description = "RDS instance class"
@@ -51,6 +73,8 @@ variable "db_allocated_storage" {
   default     = 20
 }
 
+# ── Networking ─────────────────────────────────────────────────────────────────
+
 variable "single_nat_gateway" {
   description = "Use a single NAT gateway (cost-saving for non-prod). Set false for production HA."
   type        = bool
@@ -63,6 +87,8 @@ variable "enable_nat_gateway" {
   default     = true
 }
 
+# ── Domains & TLS ──────────────────────────────────────────────────────────────
+
 variable "api_domain" {
   description = "Public hostname for the API (e.g. api.slingshot.dev)"
   type        = string
@@ -73,17 +99,24 @@ variable "frontend_domain" {
   type        = string
 }
 
-variable "grafana_domain" {
-  description = "Public hostname for Grafana. Leave empty to skip ingress."
+variable "certificate_arn" {
+  description = <<-EOT
+    ARN of an existing ACM certificate covering api_domain and frontend_domain.
+    If set, no certificate resources are created by Terraform.
+    If empty, a new certificate is created — set route53_zone_id for automatic
+    DNS validation, or add the CNAME records shown in acm_validation_records manually.
+  EOT
   type        = string
   default     = ""
 }
 
-variable "enable_monitoring" {
-  description = "Deploy kube-prometheus-stack (Prometheus + Grafana)"
-  type        = bool
-  default     = true
+variable "route53_zone_id" {
+  description = "Route 53 hosted zone ID for automatic ACM DNS validation and ALB alias records. Leave empty to skip Route 53 management."
+  type        = string
+  default     = ""
 }
+
+# ── ECR ────────────────────────────────────────────────────────────────────────
 
 variable "ecr_image_retention_count" {
   description = "Number of container images to retain per ECR repository"
@@ -91,14 +124,10 @@ variable "ecr_image_retention_count" {
   default     = 20
 }
 
+# ── S3 ─────────────────────────────────────────────────────────────────────────
+
 variable "thumbnail_bucket_cors_origin" {
   description = "Allowed CORS origin for the S3 thumbnail bucket (use frontend domain in prod)"
   type        = string
   default     = "*"
-}
-
-variable "letsencrypt_email" {
-  description = "Email address for Let's Encrypt certificate notifications"
-  type        = string
-  default     = "ops@slingshot.dev"
 }

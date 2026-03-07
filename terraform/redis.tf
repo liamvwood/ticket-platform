@@ -6,15 +6,15 @@ resource "aws_elasticache_subnet_group" "redis" {
 
 resource "aws_security_group" "redis" {
   name        = "${local.name}-redis"
-  description = "Allow Redis from EKS worker nodes"
+  description = "Allow Redis from ECS tasks"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
-    description     = "Redis from EKS nodes"
+    description     = "Redis from ECS tasks"
     from_port       = 6379
     to_port         = 6379
     protocol        = "tcp"
-    security_groups = [module.eks.node_security_group_id]
+    security_groups = [aws_security_group.ecs_tasks.id]
   }
 
   egress {

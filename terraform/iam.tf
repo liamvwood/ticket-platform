@@ -1,4 +1,4 @@
-# ── CI/CD IAM user — used by GitHub Actions to push to ECR and deploy to EKS ──
+# ── CI/CD IAM user — used by GitHub Actions to push to ECR and deploy to ECS ──
 
 resource "aws_iam_user" "ci" {
   name = "${local.name}-ci"
@@ -40,10 +40,35 @@ resource "aws_iam_user_policy" "ci" {
         ]
       },
       {
-        Sid    = "EKSDescribe"
+        Sid    = "ECSRegisterTaskDef"
         Effect = "Allow"
-        Action = ["eks:DescribeCluster", "eks:ListClusters"]
+        Action = [
+          "ecs:RegisterTaskDefinition",
+          "ecs:DescribeTaskDefinition",
+        ]
         Resource = "*"
+      },
+      {
+        Sid    = "ECSUpdateService"
+        Effect = "Allow"
+        Action = [
+          "ecs:UpdateService",
+          "ecs:DescribeServices",
+          "ecs:DescribeClusters",
+        ]
+        Resource = [
+          aws_ecs_cluster.this.arn,
+          "arn:aws:ecs:${var.aws_region}:${local.account_id}:service/${local.name}/*",
+        ]
+      },
+      {
+        Sid    = "ECSPassRoles"
+        Effect = "Allow"
+        Action = ["iam:PassRole"]
+        Resource = [
+          aws_iam_role.ecs_task_execution.arn,
+          aws_iam_role.api_task.arn,
+        ]
       },
       {
         Sid    = "SSMReadSecrets"
@@ -72,40 +97,64 @@ resource "aws_ssm_parameter" "ci_secret_access_key" {
   value = aws_iam_access_key.ci.secret
 }
 
-# ── IRSA role — grants the API pod access to S3 (thumbnails) and SSM (secrets) ─
+# ── ECS Task Execution Role ────────────────────────────────────────────────────
+# Grants the ECS agent permission to pull images from ECR, write logs to
+# CloudWatch, and fetch secrets from SSM Parameter Store at task start.
 
-data "aws_iam_policy_document" "api_irsa_assume" {
+data "aws_iam_policy_document" "ecs_task_execution_assume" {
   statement {
     effect  = "Allow"
-    actions = ["sts:AssumeRoleWithWebIdentity"]
+    actions = ["sts:AssumeRole"]
 
     principals {
-      type        = "Federated"
-      identifiers = [module.eks.oidc_provider_arn]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "${module.eks.oidc_provider}:sub"
-      values   = ["system:serviceaccount:${local.app_namespace}:ticket-platform-api"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "${module.eks.oidc_provider}:aud"
-      values   = ["sts.amazonaws.com"]
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
     }
   }
 }
 
-resource "aws_iam_role" "api_irsa" {
-  name               = "${local.name}-api-irsa"
-  assume_role_policy = data.aws_iam_policy_document.api_irsa_assume.json
+resource "aws_iam_role" "ecs_task_execution" {
+  name               = "${local.name}-task-execution"
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_execution_assume.json
 }
 
-resource "aws_iam_role_policy" "api_irsa" {
-  name = "${local.name}-api-irsa-policy"
-  role = aws_iam_role.api_irsa.id
+resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
+  role       = aws_iam_role.ecs_task_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy" "ecs_task_execution_ssm" {
+  name = "${local.name}-task-execution-ssm"
+  role = aws_iam_role.ecs_task_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "SSMGetSecrets"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath",
+        ]
+        Resource = "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/ticket-platform/${var.environment}/*"
+      },
+    ]
+  })
+}
+
+# ── API Task Role ──────────────────────────────────────────────────────────────
+# Grants running API containers access to S3 (thumbnails) and SSM at runtime.
+
+resource "aws_iam_role" "api_task" {
+  name               = "${local.name}-api-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_task_execution_assume.json
+}
+
+resource "aws_iam_role_policy" "api_task" {
+  name = "${local.name}-api-task-policy"
+  role = aws_iam_role.api_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
