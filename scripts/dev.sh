@@ -147,7 +147,7 @@ export Payment__Provider=Mock
 export Otp__Provider=Mock
 export Jwt__Secret="local-dev-secret-at-least-32-characters-long"
 
-nohup dotnet /tmp/ticket-api-build/TicketPlatform.Api.dll > /tmp/api.log 2>&1 &
+nohup bash -c 'cd /tmp/ticket-api-build && dotnet TicketPlatform.Api.dll' > /tmp/api.log 2>&1 &
 API_PID=$!
 echo "API PID: $API_PID"
 

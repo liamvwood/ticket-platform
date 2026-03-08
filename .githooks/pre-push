@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Pre-push hook: runs E2E tests against the local stack before pushing.
+#
+# Requires the stack to already be running:
+#   ./scripts/dev.sh
+#
+# Skip this hook for a single push (use sparingly):
+#   git push --no-verify
+
+set -euo pipefail
+
+API_URL="http://localhost:8080"
+FRONTEND_URL="http://localhost:5173"
+WEB_DIR="$(git rev-parse --show-toplevel)/src/TicketPlatform.Web"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo ""
+echo "🔍  Pre-push: verifying local stack is up..."
+
+if ! curl -sf "$API_URL/healthz" > /dev/null 2>&1; then
+  echo -e "${RED}❌  API is not running at $API_URL${NC}"
+  echo -e "    Start the stack first:  ${YELLOW}./scripts/dev.sh${NC}"
+  exit 1
+fi
+
+if ! curl -sf "$FRONTEND_URL" > /dev/null 2>&1; then
+  echo -e "${RED}❌  Frontend is not running at $FRONTEND_URL${NC}"
+  echo -e "    Start the stack first:  ${YELLOW}./scripts/dev.sh${NC}"
+  exit 1
+fi
+
+echo -e "${GREEN}✅  Stack is running — executing E2E tests...${NC}"
+echo ""
+
+cd "$WEB_DIR"
+E2E_BASE_URL="$FRONTEND_URL" E2E_API_URL="$API_URL" npx playwright test
+
+echo ""
+echo -e "${GREEN}✅  All E2E tests passed — proceeding with push.${NC}"
+echo ""
