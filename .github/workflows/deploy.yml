@@ -298,17 +298,22 @@ jobs:
         run: |
           CLUSTER=${{ env.CLUSTER }}
 
-          # Fetch the current task definition and strip read-only fields
-          TASK_DEF=$(aws ecs describe-task-definition \
-            --task-definition ${CLUSTER}-api \
-            --query 'taskDefinition' --output json | \
+          # Separate the aws call from the jq pipe so set -e catches a missing
+          # task definition instead of silently passing null to the next step.
+          TASK_JSON=$(aws ecs describe-task-definition \
+            --task-definition "${CLUSTER}-api" \
+            --query 'taskDefinition' --output json) || {
+            echo "❌ Task definition '${CLUSTER}-api' not found in AWS."
+            echo "   Run: terraform apply -var-file=environments/test.tfvars"
+            exit 1
+          }
+
+          TASK_DEF=$(echo "$TASK_JSON" | \
             jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)')
 
-          # Swap in the new image SHA
           UPDATED=$(echo "$TASK_DEF" | jq --arg img "${{ env.api_image }}" \
             '.containerDefinitions[0].image = $img')
 
-          # Register the new revision and capture its ARN
           NEW_ARN=$(aws ecs register-task-definition \
             --cli-input-json "$UPDATED" \
             --query 'taskDefinition.taskDefinitionArn' --output text)
@@ -324,9 +329,15 @@ jobs:
         run: |
           CLUSTER=${{ env.CLUSTER }}
 
-          TASK_DEF=$(aws ecs describe-task-definition \
-            --task-definition ${CLUSTER}-frontend \
-            --query 'taskDefinition' --output json | \
+          TASK_JSON=$(aws ecs describe-task-definition \
+            --task-definition "${CLUSTER}-frontend" \
+            --query 'taskDefinition' --output json) || {
+            echo "❌ Task definition '${CLUSTER}-frontend' not found in AWS."
+            echo "   Run: terraform apply -var-file=environments/test.tfvars"
+            exit 1
+          }
+
+          TASK_DEF=$(echo "$TASK_JSON" | \
             jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)')
 
           UPDATED=$(echo "$TASK_DEF" | jq --arg img "${{ env.frontend_image }}" \
