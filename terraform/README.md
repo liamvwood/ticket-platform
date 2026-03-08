@@ -84,25 +84,28 @@ terraform output alb_dns_name
 
 Create a CNAME (or ALIAS if using Route 53) from each domain to that DNS name.
 
-### 6. Configure GitHub Actions secrets
+### 6. Sync GitHub Actions secrets
 
-After apply, set these as repository secrets:
+After apply, run the bundled script to push all required secrets to the GitHub environment in one step:
 
 ```bash
-terraform output -json
-terraform output -raw ci_access_key_id
-terraform output -raw ci_secret_access_key
+bash terraform/scripts/sync-github-secrets.sh --env test
+# bash terraform/scripts/sync-github-secrets.sh --env prod
 ```
 
-| GitHub Secret | Value |
-|---------------|-------|
-| `AWS_REGION` | `us-east-1` |
-| `AWS_ACCESS_KEY_ID` | `terraform output -raw ci_access_key_id` |
-| `AWS_SECRET_ACCESS_KEY` | `terraform output -raw ci_secret_access_key` |
-| `ECR_REGISTRY` | `terraform output -raw ecr_registry` |
-| `ECS_CLUSTER` | `terraform output -raw ecs_cluster_name` |
-| `TEST_API_HOST` | your API domain |
-| `TEST_FRONTEND_HOST` | your frontend domain |
+The script reads every value directly from `terraform output` and calls `gh secret set` for each one. Re-run it after any `terraform apply` that changes infrastructure (e.g. rotating IAM keys, changing domains).
+
+Prerequisites: `gh` CLI installed and authenticated (`gh auth login`).
+
+| GitHub Secret | Terraform output |
+|---------------|-----------------|
+| `AWS_REGION` | `aws_region` |
+| `AWS_ACCESS_KEY_ID` | `ci_access_key_id` |
+| `AWS_SECRET_ACCESS_KEY` | `ci_secret_access_key` |
+| `ECR_REGISTRY` | `ecr_registry` |
+| `ECS_CLUSTER` | `ecs_cluster_name` |
+| `TEST_API_HOST` | `api_domain` |
+| `TEST_FRONTEND_HOST` | `frontend_domain` |
 
 ### 7. Update secrets before going live (production)
 
@@ -180,5 +183,6 @@ terraform/
 │   ├── test-backend.tfvars  # S3 backend config for test state
 │   └── prod-backend.tfvars  # S3 backend config for prod state
 └── scripts/
-    └── bootstrap-state.sh   # One-time S3 + DynamoDB state backend setup
+    ├── bootstrap-state.sh       # One-time S3 + DynamoDB state backend setup
+    └── sync-github-secrets.sh   # Push Terraform outputs → GitHub Actions secrets
 ```

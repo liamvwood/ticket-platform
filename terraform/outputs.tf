@@ -78,6 +78,21 @@ output "ci_secret_access_key" {
   sensitive   = true
 }
 
+output "aws_region" {
+  description = "AWS region the environment is deployed in"
+  value       = var.aws_region
+}
+
+output "api_domain" {
+  description = "API hostname (value for TEST_API_HOST secret)"
+  value       = var.api_domain
+}
+
+output "frontend_domain" {
+  description = "Frontend hostname (value for TEST_FRONTEND_HOST secret)"
+  value       = var.frontend_domain
+}
+
 output "github_secrets_summary" {
   description = "GitHub Actions secrets to configure after apply (retrieve sensitive values from SSM)"
   value = {
