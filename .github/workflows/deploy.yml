@@ -207,6 +207,32 @@ jobs:
     environment: test
 
     steps:
+      - name: Validate required secrets
+        env:
+          _AWS_REGION: ${{ secrets.AWS_REGION }}
+          _AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          _AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          _ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          _ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          _TEST_API_HOST: ${{ secrets.TEST_API_HOST }}
+          _TEST_FRONTEND_HOST: ${{ secrets.TEST_FRONTEND_HOST }}
+        run: |
+          missing=()
+          [ -z "$_AWS_REGION" ]            && missing+=(AWS_REGION)
+          [ -z "$_AWS_ACCESS_KEY_ID" ]     && missing+=(AWS_ACCESS_KEY_ID)
+          [ -z "$_AWS_SECRET_ACCESS_KEY" ] && missing+=(AWS_SECRET_ACCESS_KEY)
+          [ -z "$_ECR_REGISTRY" ]          && missing+=(ECR_REGISTRY)
+          [ -z "$_ECS_CLUSTER" ]           && missing+=(ECS_CLUSTER)
+          [ -z "$_TEST_API_HOST" ]         && missing+=(TEST_API_HOST)
+          [ -z "$_TEST_FRONTEND_HOST" ]    && missing+=(TEST_FRONTEND_HOST)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "❌ Missing required secrets in the 'test' environment: ${missing[*]}"
+            echo "   Configure them at: https://github.com/${{ github.repository }}/settings/environments"
+            echo "   See terraform/README.md §6 for the value of each secret."
+            exit 1
+          fi
+          echo "✅ All required secrets are present"
+
       - name: Checkout
         uses: actions/checkout@v4
 
