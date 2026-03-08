@@ -19,7 +19,7 @@ step ".NET 10 SDK"          bash -c 'sudo apt-get update -qq && sudo apt-get ins
 step "dotnet-ef tool"       bash -c 'dotnet tool install --global dotnet-ef 2>/dev/null || dotnet tool update --global dotnet-ef'
 step "jq"                   bash -c 'sudo apt-get install -y jq'
 step "aws-cdk"              npm install -g aws-cdk
-step "gh-copilot extension" bash -c 'gh extension install github/gh-copilot --force'
+step "copilot-cli"          npm install -g @github/copilot
 
 # uv → mcp-proxy-for-aws (dependent chain: mcp-proxy-for-aws requires uv)
 if step "uv" bash -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'; then
@@ -36,7 +36,7 @@ printf '\n--- Installed versions ---\n'
 aws     --version  2>&1 || true
 cdk     --version  2>&1 || true
 gh      --version  2>&1 || true
-gh copilot --version </dev/null 2>&1 || true
+npm list -g @github/copilot 2>&1 || true
 uv      --version  2>&1 || true
 
 # Summary
