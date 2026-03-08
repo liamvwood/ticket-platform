@@ -45,6 +45,7 @@ resource "aws_iam_user_policy" "ci" {
         Action = [
           "ecs:RegisterTaskDefinition",
           "ecs:DescribeTaskDefinition",
+          "ecs:ListClusters",
         ]
         Resource = "*"
       },
@@ -55,7 +56,6 @@ resource "aws_iam_user_policy" "ci" {
           "ecs:UpdateService",
           "ecs:DescribeServices",
           "ecs:DescribeClusters",
-          "ecs:ListClusters",
         ]
         Resource = [
           aws_ecs_cluster.this.arn,

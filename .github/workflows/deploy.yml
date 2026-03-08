@@ -291,67 +291,135 @@ jobs:
           docker push $ECR_REGISTRY/$FRONTEND_IMAGE:latest
           echo "frontend_image=$IMAGE" >> $GITHUB_ENV
 
-      # ── Deploy API: register new task def revision + update service ──
-      # Secrets are injected from SSM at task start by the ECS agent —
-      # no secrets are passed through GitHub Actions.
+      # ── Deploy API: build task definition from canonical spec + update service ──
+      # Constructs the full task definition JSON from the cluster name and account
+      # ID rather than fetching the existing revision. This works on first deploy
+      # (before terraform apply has registered any revision) and keeps the spec
+      # as code instead of mutating whatever is currently in AWS.
       - name: Deploy API to ECS
         run: |
           CLUSTER=${{ env.CLUSTER }}
+          REGION=${{ env.AWS_REGION }}
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          # Derive the environment name from the cluster name (e.g. ticket-platform-test → test)
+          ENV_NAME="${CLUSTER#ticket-platform-}"
 
-          # Separate the aws call from the jq pipe so set -e catches a missing
-          # task definition instead of silently passing null to the next step.
-          TASK_JSON=$(aws ecs describe-task-definition \
-            --task-definition "${CLUSTER}-api" \
-            --query 'taskDefinition' --output json) || {
-            echo "❌ Task definition '${CLUSTER}-api' not found in AWS."
-            echo "   Run: terraform apply -var-file=environments/test.tfvars"
-            exit 1
-          }
-
-          TASK_DEF=$(echo "$TASK_JSON" | \
-            jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)')
-
-          UPDATED=$(echo "$TASK_DEF" | jq --arg img "${{ env.api_image }}" \
-            '.containerDefinitions[0].image = $img')
+          TASK_DEF=$(jq -n \
+            --arg family   "${CLUSTER}-api" \
+            --arg image    "${{ env.api_image }}" \
+            --arg exec_arn "arn:aws:iam::${ACCOUNT_ID}:role/${CLUSTER}-task-execution" \
+            --arg task_arn "arn:aws:iam::${ACCOUNT_ID}:role/${CLUSTER}-api-task" \
+            --arg log_grp  "/ecs/${CLUSTER}/api" \
+            --arg region   "$REGION" \
+            --arg ssm      "/ticket-platform/${ENV_NAME}" \
+            '{
+              family:                   $family,
+              networkMode:              "awsvpc",
+              requiresCompatibilities:  ["FARGATE"],
+              cpu:                      "256",
+              memory:                   "512",
+              executionRoleArn:         $exec_arn,
+              taskRoleArn:              $task_arn,
+              containerDefinitions: [{
+                name:      "api",
+                image:     $image,
+                essential: true,
+                portMappings: [{containerPort: 8080, protocol: "tcp"}],
+                environment: [
+                  {name: "ASPNETCORE_ENVIRONMENT", value: "Production"},
+                  {name: "ASPNETCORE_URLS",         value: "http://+:8080"},
+                  {name: "Aws__Region",             value: $region}
+                ],
+                secrets: [
+                  {name: "ConnectionStrings__DefaultConnection", valueFrom: ($ssm + "/db-connection-string")},
+                  {name: "Jwt__Secret",             valueFrom: ($ssm + "/jwt-secret")},
+                  {name: "AppOwner__Email",          valueFrom: ($ssm + "/owner-email")},
+                  {name: "AppOwner__Password",       valueFrom: ($ssm + "/owner-password")},
+                  {name: "Stripe__SecretKey",        valueFrom: ($ssm + "/stripe-secret-key")},
+                  {name: "Stripe__WebhookSecret",    valueFrom: ($ssm + "/stripe-webhook-secret")},
+                  {name: "Aws__BucketName",          valueFrom: ($ssm + "/thumbnail-bucket-name")},
+                  {name: "Redis__ConnectionString",  valueFrom: ($ssm + "/redis-connection-string")}
+                ],
+                healthCheck: {
+                  command:     ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"],
+                  interval:    30,
+                  timeout:     5,
+                  retries:     3,
+                  startPeriod: 60
+                },
+                logConfiguration: {
+                  logDriver: "awslogs",
+                  options: {
+                    "awslogs-group":         $log_grp,
+                    "awslogs-region":        $region,
+                    "awslogs-stream-prefix": "ecs"
+                  }
+                }
+              }]
+            }')
 
           NEW_ARN=$(aws ecs register-task-definition \
-            --cli-input-json "$UPDATED" \
+            --cli-input-json "$TASK_DEF" \
             --query 'taskDefinition.taskDefinitionArn' --output text)
 
           aws ecs update-service \
             --cluster "$CLUSTER" \
             --service "${CLUSTER}-api" \
             --task-definition "$NEW_ARN" \
-            --region ${{ env.AWS_REGION }}
+            --region "$REGION"
 
       # ── Deploy frontend: same pattern ────────────────────────
       - name: Deploy frontend to ECS
         run: |
           CLUSTER=${{ env.CLUSTER }}
+          REGION=${{ env.AWS_REGION }}
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-          TASK_JSON=$(aws ecs describe-task-definition \
-            --task-definition "${CLUSTER}-frontend" \
-            --query 'taskDefinition' --output json) || {
-            echo "❌ Task definition '${CLUSTER}-frontend' not found in AWS."
-            echo "   Run: terraform apply -var-file=environments/test.tfvars"
-            exit 1
-          }
-
-          TASK_DEF=$(echo "$TASK_JSON" | \
-            jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)')
-
-          UPDATED=$(echo "$TASK_DEF" | jq --arg img "${{ env.frontend_image }}" \
-            '.containerDefinitions[0].image = $img')
+          TASK_DEF=$(jq -n \
+            --arg family   "${CLUSTER}-frontend" \
+            --arg image    "${{ env.frontend_image }}" \
+            --arg exec_arn "arn:aws:iam::${ACCOUNT_ID}:role/${CLUSTER}-task-execution" \
+            --arg log_grp  "/ecs/${CLUSTER}/frontend" \
+            --arg region   "$REGION" \
+            '{
+              family:                   $family,
+              networkMode:              "awsvpc",
+              requiresCompatibilities:  ["FARGATE"],
+              cpu:                      "256",
+              memory:                   "512",
+              executionRoleArn:         $exec_arn,
+              containerDefinitions: [{
+                name:      "frontend",
+                image:     $image,
+                essential: true,
+                portMappings: [{containerPort: 80, protocol: "tcp"}],
+                healthCheck: {
+                  command:     ["CMD-SHELL", "curl -f http://localhost/ || exit 1"],
+                  interval:    30,
+                  timeout:     5,
+                  retries:     3,
+                  startPeriod: 30
+                },
+                logConfiguration: {
+                  logDriver: "awslogs",
+                  options: {
+                    "awslogs-group":         $log_grp,
+                    "awslogs-region":        $region,
+                    "awslogs-stream-prefix": "ecs"
+                  }
+                }
+              }]
+            }')
 
           NEW_ARN=$(aws ecs register-task-definition \
-            --cli-input-json "$UPDATED" \
+            --cli-input-json "$TASK_DEF" \
             --query 'taskDefinition.taskDefinitionArn' --output text)
 
           aws ecs update-service \
             --cluster "$CLUSTER" \
             --service "${CLUSTER}-frontend" \
             --task-definition "$NEW_ARN" \
-            --region ${{ env.AWS_REGION }}
+            --region "$REGION"
 
       # ── Wait for both services to stabilise ─────────────────
       - name: Wait for ECS services to stabilise
