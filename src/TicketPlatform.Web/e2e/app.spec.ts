@@ -579,7 +579,9 @@ test.describe('Platform fee', () => {
 // ─── Guest OTP checkout ────────────────────────────────────────────────────
 
 test.describe('Guest OTP checkout', () => {
-  const guestPhone = '+15125550199';
+  // Use RUN to generate a unique phone number per test run, avoiding the
+  // 3-requests-per-10-minutes rate limit on the persistent local dev database.
+  const guestPhone = `+1512555${RUN.slice(0, 4)}`;
   let guestToken: string;
   let guestEventId: string;
   let ticketTypeId: string;
