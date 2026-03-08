@@ -213,7 +213,6 @@ jobs:
           _AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           _AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           _ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-          _ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
           _TEST_API_HOST: ${{ secrets.TEST_API_HOST }}
           _TEST_FRONTEND_HOST: ${{ secrets.TEST_FRONTEND_HOST }}
         run: |
@@ -222,7 +221,6 @@ jobs:
           [ -z "$_AWS_ACCESS_KEY_ID" ]     && missing+=(AWS_ACCESS_KEY_ID)
           [ -z "$_AWS_SECRET_ACCESS_KEY" ] && missing+=(AWS_SECRET_ACCESS_KEY)
           [ -z "$_ECR_REGISTRY" ]          && missing+=(ECR_REGISTRY)
-          [ -z "$_ECS_CLUSTER" ]           && missing+=(ECS_CLUSTER)
           [ -z "$_TEST_API_HOST" ]         && missing+=(TEST_API_HOST)
           [ -z "$_TEST_FRONTEND_HOST" ]    && missing+=(TEST_FRONTEND_HOST)
           if [ ${#missing[@]} -gt 0 ]; then
@@ -246,6 +244,29 @@ jobs:
       - name: Login to Amazon ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
+
+      # ── Resolve ECS cluster name ─────────────────────────────
+      # Uses ECS_CLUSTER secret when set; otherwise discovers the cluster
+      # automatically from AWS (supports fresh environments where the
+      # secret has not yet been configured).
+      - name: Resolve ECS cluster name
+        run: |
+          CLUSTER="${{ secrets.ECS_CLUSTER }}"
+          if [ -z "$CLUSTER" ]; then
+            echo "ECS_CLUSTER secret not set — discovering cluster from AWS..."
+            CLUSTER=$(aws ecs list-clusters --output text --query 'clusterArns[]' \
+              | tr '\t' '\n' \
+              | grep 'ticket-platform' \
+              | head -1 \
+              | sed 's|.*/||')
+            if [ -z "$CLUSTER" ]; then
+              echo "❌ Could not find a 'ticket-platform' ECS cluster in AWS."
+              echo "   Run 'terraform apply' first, or set the ECS_CLUSTER secret."
+              exit 1
+            fi
+            echo "Discovered cluster: $CLUSTER"
+          fi
+          echo "CLUSTER=$CLUSTER" >> $GITHUB_ENV
 
       # ── Build & push API image ───────────────────────────────
       - name: Build & push API image
@@ -275,7 +296,7 @@ jobs:
       # no secrets are passed through GitHub Actions.
       - name: Deploy API to ECS
         run: |
-          CLUSTER=${{ secrets.ECS_CLUSTER }}
+          CLUSTER=${{ env.CLUSTER }}
 
           # Fetch the current task definition and strip read-only fields
           TASK_DEF=$(aws ecs describe-task-definition \
@@ -301,7 +322,7 @@ jobs:
       # ── Deploy frontend: same pattern ────────────────────────
       - name: Deploy frontend to ECS
         run: |
-          CLUSTER=${{ secrets.ECS_CLUSTER }}
+          CLUSTER=${{ env.CLUSTER }}
 
           TASK_DEF=$(aws ecs describe-task-definition \
             --task-definition ${CLUSTER}-frontend \
@@ -324,7 +345,7 @@ jobs:
       # ── Wait for both services to stabilise ─────────────────
       - name: Wait for ECS services to stabilise
         run: |
-          CLUSTER=${{ secrets.ECS_CLUSTER }}
+          CLUSTER=${{ env.CLUSTER }}
           aws ecs wait services-stable \
             --cluster "$CLUSTER" \
             --services "${CLUSTER}-api" "${CLUSTER}-frontend" \
